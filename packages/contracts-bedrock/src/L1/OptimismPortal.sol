@@ -20,7 +20,7 @@ import { Constants } from "src/libraries/Constants.sol";
 /// @notice The OptimismPortal is a low-level contract responsible for passing messages between L1
 ///         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
 ///         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
-contract OptimismPortal is Initializable, ResourceMetering, ISemver {
+contract OptimismPortal is Initializable, ISemver {
     /// @notice Represents a proven withdrawal.
     /// @custom:field outputRoot    Root of the L2 output this was proven against.
     /// @custom:field timestamp     Timestamp at whcih the withdrawal was proven.
@@ -110,7 +110,6 @@ contract OptimismPortal is Initializable, ResourceMetering, ISemver {
     function initialize(SuperchainConfig _superchainConfig) public initializer {
         l2Sender = Constants.DEFAULT_L2_SENDER;
         superchainConfig = _superchainConfig;
-        __ResourceMetering_init();
     }
 
     /// @notice Getter function for the address of the L2OutputOracle on this chain.
@@ -171,14 +170,6 @@ contract OptimismPortal is Initializable, ResourceMetering, ISemver {
     ///         Optimism system and Bedrock.
     function donateETH() external payable {
         // Intentionally empty.
-    }
-
-    /// @notice Getter for the resource config.
-    ///         Used internally by the ResourceMetering contract.
-    ///         The SystemConfig is the source of truth for the resource config.
-    /// @return ResourceMetering ResourceConfig
-    function _resourceConfig() internal view override returns (ResourceMetering.ResourceConfig memory) {
-        return SYSTEM_CONFIG.resourceConfig();
     }
 
     /// @notice Proves a withdrawal transaction.
@@ -364,7 +355,6 @@ contract OptimismPortal is Initializable, ResourceMetering, ISemver {
     )
         public
         payable
-        metered(_gasLimit)
     {
         // Just to be safe, make sure that people specify address(0) as the target when doing
         // contract creations.

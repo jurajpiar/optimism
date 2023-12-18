@@ -15,14 +15,14 @@ function setPrevBaseFee(Vm _vm, address _op, uint128 _prevBaseFee) {
     _vm.store(address(_op), bytes32(uint256(1)), bytes32((block.number << 192) | _prevBaseFee));
 }
 
-contract SetPrevBaseFee_Test is CommonTest {
-    function test_setPrevBaseFee_succeeds() external {
-        setPrevBaseFee(vm, address(optimismPortal), 100 gwei);
-        (uint128 prevBaseFee,, uint64 prevBlockNum) = optimismPortal.params();
-        assertEq(uint256(prevBaseFee), 100 gwei);
-        assertEq(uint256(prevBlockNum), block.number);
-    }
-}
+// contract SetPrevBaseFee_Test is CommonTest {
+//     function test_setPrevBaseFee_succeeds() external {
+//         setPrevBaseFee(vm, address(optimismPortal), 100 gwei);
+//         (uint128 prevBaseFee,, uint64 prevBlockNum) = optimismPortal.params();
+//         assertEq(uint256(prevBaseFee), 100 gwei);
+//         assertEq(uint256(prevBlockNum), block.number);
+//     }
+// }
 
 // Tests for obtaining pure gas cost estimates for commonly used functions.
 // The objective with these benchmarks is to strip down the actual test functions
