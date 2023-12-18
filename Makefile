@@ -194,3 +194,42 @@ install-geth:
  			go install -v github.com/ethereum/go-ethereum/cmd/geth@$(shell cat .gethrc); \
  			echo "Installed geth!"; true)
 .PHONY: install-geth
+
+rsk-patch:
+	git apply rsk.patch
+.PHONY: rsk-patch
+
+rsk-build:
+	pnpm i &&  make op-node op-batcher op-proposer && pnpm build
+.PHONY: rsk-build
+
+rsk-run-docker:
+	docker stop rsk_regtest && docker rm rsk_regtest \
+	&&  docker run --name rsk_regtest -d -p 5050:5050 -p 127.0.0.1:8545:4444 rsksmart/rskj:latest --regtest --reset \
+	&& sleep 5 \
+	&& docker exec -ti -w "/var/lib/rsk/logs" rsk_regtest /bin/bash -c "tail -f rsk.log"
+.PHONY: rsk-run-docker
+
+rsk-wallets:
+	./packages/contracts-bedrock/scripts/getting-started/wallets.sh >> .envrc #TODO: replace with sed \
+	&& direnv allow \
+	&& echo "Send 50 rbtc to create2 deployer" \
+	&& cast send --from 0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826 --rpc-url "$L1_RPC_URL" --unlocked --value 50ether 0x3fAB184622Dc19b6109349B94811493BF2a45362 --legacy \
+	&& echo "Send 50 rbtc to GS_ADMIN_ADDRESS" \
+	&& cast send --from 0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826 --rpc-url "$L1_RPC_URL" --unlocked --value 50ether "$GS_ADMIN_ADDRESS" --legacy \
+	&& echo "Send 50 rbtc to GS_BATCHER_ADDRESS" \
+	&& cast send --from 0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826 --rpc-url "$L1_RPC_URL" --unlocked --value 50ether "$GS_BATCHER_ADDRESS" --legacy \
+	&& echo "Send 50 rbtc to GS_SEQUENCER_ADDRESS" \
+	&& cast send --from 0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826 --rpc-url "$L1_RPC_URL" --unlocked --value 50ether "$GS_SEQUENCER_ADDRESS" --legacy
+.PHONY: rsk-wallets
+
+rsk-create2:
+	direnv allow \
+	&& cast publish --rpc-url "$L1_RPC_URL" 0xf8a58085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222
+.PHONY: rsk-create2
+
+rsk-deploy:
+	direnv allow \
+	&& forge script scripts/Deploy.s.sol:Deploy -vvv --legacy --slow --sender "$GS_ADMIN_ADDRESS" --rpc-url "$L1_RPC_URL" --broadcast --private-key "$GS_ADMIN_PRIVATE_KEY" --with-gas-price 100000000000
+
+.PHONY: rsk-deploy
