@@ -223,6 +223,11 @@ rsk-wallets:
 	&& cast send --from 0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826 --rpc-url "$L1_RPC_URL" --unlocked --value 50ether "$GS_SEQUENCER_ADDRESS" --legacy
 .PHONY: rsk-wallets
 
+rsk-config:
+	cd packages/contracts-bedrock && ./scripts/getting-started/config.sh
+	# remove second hash
+.PHONY: rsk-config
+
 rsk-create2:
 	direnv allow \
 	&& cast publish --rpc-url "$L1_RPC_URL" 0xf8a58085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222
@@ -231,5 +236,19 @@ rsk-create2:
 rsk-deploy:
 	direnv allow \
 	&& forge script scripts/Deploy.s.sol:Deploy -vvv --legacy --slow --sender "$GS_ADMIN_ADDRESS" --rpc-url "$L1_RPC_URL" --broadcast --private-key "$GS_ADMIN_PRIVATE_KEY" --with-gas-price 100000000000
-
 .PHONY: rsk-deploy
+
+rsk-deploy-sync:
+	direnv allow \
+	&& forge script scripts/Deploy.s.sol:Deploy --sig 'sync()' --rpc-url $L1_RPC_URL --legacy --private-key $GS_ADMIN_PRIVATE_KEY --broadcast
+.PHONY: rsk-deploy-sync
+
+rsk-create-genesis:
+	cd op-node \
+	&& go run cmd/main.go genesis l2 \
+    --deploy-config ../packages/contracts-bedrock/deploy-config/regtest.json \
+    --deployment-dir ../packages/contracts-bedrock/deployments/regtest \
+    --outfile.l2 genesis.json \
+    --outfile.rollup rollup.json \
+    --l1-rpc $L1_RPC_URL
+.PHONY: rsk-create-genesis
