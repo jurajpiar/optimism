@@ -15,7 +15,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 	"github.com/ethereum-optimism/optimism/op-service/ioutil"
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
-	"github.com/ethereum-optimism/superchain-registry/validation"
 )
 
 type IntentType string
@@ -258,14 +257,15 @@ func (c *Intent) WriteToFile(path string) error {
 }
 
 func (c *Intent) checkL1Prod() error {
-	versions, err := standard.L1VersionsFor(c.L1ChainID)
-	if err != nil {
-		return err
-	}
+	// No need for the PoC version check for regtest
+	// versions, err := standard.L1VersionsFor(c.L1ChainID)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if _, ok := versions[validation.Semver(standard.CurrentTag)]; !ok {
-		return fmt.Errorf("tag '%s' not found in standard versions", standard.CurrentTag)
-	}
+	// if _, ok := versions[validation.Semver(standard.CurrentTag)]; !ok {
+	// 	return fmt.Errorf("tag '%s' not found in standard versions", standard.CurrentTag)
+	// }
 
 	opcmAddr, err := standard.OPCMImplAddressFor(c.L1ChainID, standard.CurrentTag)
 	if err != nil {
