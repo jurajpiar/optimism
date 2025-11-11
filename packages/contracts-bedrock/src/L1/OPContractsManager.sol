@@ -869,31 +869,31 @@ contract OPContractsManagerUpgrader is OPContractsManagerBase {
     ///      `_opChainConfigs`'s ProxyAdmin.
     /// @dev This function requires that each chain's superchainConfig is already upgraded.
     function upgrade(OPContractsManager.OpChainConfig[] memory _opChainConfigs) external virtual {
-        // Grab the implementations.
-        OPContractsManager.Implementations memory impls = getImplementations();
+        // // Grab the implementations.
+        // OPContractsManager.Implementations memory impls = getImplementations();
 
-        // Loop through each chain and upgrade.
-        for (uint256 i = 0; i < _opChainConfigs.length; i++) {
-            assertValidOpChainConfig(_opChainConfigs[i]);
-            uint256 l2ChainId = _opChainConfigs[i].systemConfigProxy.l2ChainId();
+        // // Loop through each chain and upgrade.
+        // for (uint256 i = 0; i < _opChainConfigs.length; i++) {
+        //     assertValidOpChainConfig(_opChainConfigs[i]);
+        //     uint256 l2ChainId = _opChainConfigs[i].systemConfigProxy.l2ChainId();
 
-            // Grab the SuperchainConfig.
-            ISuperchainConfig superchainConfig = _opChainConfigs[i].systemConfigProxy.superchainConfig();
+        //     // Grab the SuperchainConfig.
+        //     ISuperchainConfig superchainConfig = _opChainConfigs[i].systemConfigProxy.superchainConfig();
 
-            // If the SuperchainConfig is not already upgraded, revert.
-            if (SemverComp.lt(superchainConfig.version(), ISuperchainConfig(impls.superchainConfigImpl).version())) {
-                revert OPContractsManagerUpgrader_SuperchainConfigNeedsUpgrade(i);
-            }
+        //     // If the SuperchainConfig is not already upgraded, revert.
+        //     if (SemverComp.lt(superchainConfig.version(), ISuperchainConfig(impls.superchainConfigImpl).version())) {
+        //         revert OPContractsManagerUpgrader_SuperchainConfigNeedsUpgrade(i);
+        //     }
 
-            // Do the chain upgrade.
-            // All of your updates should be done in this internal function unless you're making a
-            // change to how upgrades work in general.
-            _doChainUpgrade(impls, _opChainConfigs[i], l2ChainId);
+        //     // Do the chain upgrade.
+        //     // All of your updates should be done in this internal function unless you're making a
+        //     // change to how upgrades work in general.
+        //     _doChainUpgrade(impls, _opChainConfigs[i], l2ChainId);
 
-            // Emit the upgraded event with the address of the caller. Since this will be a delegatecall,
-            // the caller will be the value of the ADDRESS opcode.
-            emit Upgraded(l2ChainId, _opChainConfigs[i].systemConfigProxy, address(this));
-        }
+        //     // Emit the upgraded event with the address of the caller. Since this will be a delegatecall,
+        //     // the caller will be the value of the ADDRESS opcode.
+        //     emit Upgraded(l2ChainId, _opChainConfigs[i].systemConfigProxy, address(this));
+        // }
     }
 
     /// @notice Performs an upgrade for a specific chain.

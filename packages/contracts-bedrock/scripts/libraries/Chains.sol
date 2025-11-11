@@ -3,7 +3,9 @@ pragma solidity ^0.8.0;
 
 /// @notice Chain IDs for the various networks.
 library Chains {
-    uint256 internal constant Mainnet = 1;
+    uint256 internal constant Mainnet = 30;
+    uint256 internal constant Testnet = 31;
+    uint256 internal constant Regtest = 33;
     uint256 internal constant OPMainnet = 10;
     uint256 internal constant Goerli = 5;
     uint256 internal constant OPGoerli = 420;

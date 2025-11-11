@@ -7,9 +7,9 @@ if [ -n "${DEPLOY_VERIFY:-}" ]; then
 fi
 
 echo "> Deploying contracts"
-forge script -vvv scripts/deploy/Deploy.s.sol:Deploy --rpc-url "$DEPLOY_ETH_RPC_URL" --broadcast --private-key "$DEPLOY_PRIVATE_KEY" $verify_flag
+forge script -vvv scripts/deploy/Deploy.s.sol:Deploy --rpc-url "$DEPLOY_ETH_RPC_URL" --broadcast --legacy --slow --with-gas-price 65164000 -vvvvv --private-key "$DEPLOY_PRIVATE_KEY" $verify_flag
 
 if [ -n "${DEPLOY_GENERATE_HARDHAT_ARTIFACTS:-}" ]; then
   echo "> Generating hardhat artifacts"
-  forge script -vvv scripts/deploy/Deploy.s.sol:Deploy --sig 'sync()' --rpc-url "$DEPLOY_ETH_RPC_URL" --broadcast --private-key "$DEPLOY_PRIVATE_KEY"
+  forge script -vvv scripts/deploy/Deploy.s.sol:Deploy --sig 'sync()' -vvvvv --rpc-url "$DEPLOY_ETH_RPC_URL" --broadcast --legacy --slow --private-key "$DEPLOY_PRIVATE_KEY"
 fi

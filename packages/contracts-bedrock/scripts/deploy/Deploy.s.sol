@@ -66,7 +66,8 @@ contract Deploy is Deployer {
     /// @notice Modifier that will only allow a function to be called on devnet.
     modifier onlyDevnet() {
         uint256 chainid = block.chainid;
-        if (chainid == Chains.LocalDevnet || chainid == Chains.GethDevnet) {
+        console.log("chainid: %s", chainid);
+        if (chainid == Chains.LocalDevnet || chainid == Chains.GethDevnet || chainid == Chains.Regtest) {
             _;
         }
     }
@@ -128,6 +129,7 @@ contract Deploy is Deployer {
     function run() public {
         console.log("Deploying a fresh OP Stack including SuperchainConfig");
         _run({ _needsSuperchain: true });
+        console.log("Deployed a fresh OP Stack including SuperchainConfig");
     }
 
     /// @notice Deploy a new OP Chain using an existing SuperchainConfig and ProtocolVersions
@@ -380,6 +382,10 @@ contract Deploy is Deployer {
         address delayedWETHImpl = artifacts.mustGetAddress("DelayedWETHImpl");
         address delayedWETHPermissionlessGameProxy =
             deployERC1967ProxyWithOwner("DelayedWETHProxy", address(deployOutput.opChainProxyAdmin));
+        console.log("delayedWETHPermissionlessGameProxy: %s", delayedWETHPermissionlessGameProxy);
+        console.log("delayedWETHImpl: %s", delayedWETHImpl);
+        console.log("deployOutput.systemConfigProxy: %s", address(deployOutput.systemConfigProxy));
+        console.log("deployOutput.opChainProxyAdmin: %s", address(deployOutput.opChainProxyAdmin));
         vm.broadcast(address(deployOutput.opChainProxyAdmin));
         IProxy(payable(delayedWETHPermissionlessGameProxy)).upgradeToAndCall({
             _implementation: delayedWETHImpl,
