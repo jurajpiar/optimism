@@ -124,7 +124,7 @@ func (h *headerBlockInfo) MixDigest() common.Hash {
 }
 
 func (h *headerBlockInfo) BaseFee() *big.Int {
-	return h.header.BaseFee
+	return h.header.BaseFee()
 }
 
 func (h *headerBlockInfo) BlobBaseFee(chainConfig *params.ChainConfig) *big.Int {

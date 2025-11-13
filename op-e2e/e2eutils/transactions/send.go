@@ -123,7 +123,7 @@ func createTx(ctx context.Context, client *ethclient.Client, candidate txmgr.TxC
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest block: %w", err)
 	}
-	gasFeeCap := new(big.Int).Mul(latestBlock.BaseFee, big.NewInt(3))
+	gasFeeCap := new(big.Int).Mul(latestBlock.BaseFee(), big.NewInt(3))
 	gasTipCap := big.NewInt(1 * params.GWei)
 	if gasFeeCap.Cmp(gasTipCap) < 0 {
 		// gasTipCap can't be higher than gasFeeCap

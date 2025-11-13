@@ -32,7 +32,7 @@ func TestFees(gt *testing.T) {
 		"gasUsed", result.TransactionReceipt.GasUsed,
 		"l1Fee", result.L1Fee.String(),
 		"l2Fee", result.L2Fee.String(),
-		"baseFee", result.BaseFee.String(),
+		"baseFee", result.BaseFee().String(),
 		"priorityFee", result.PriorityFee.String(),
 		"totalFee", result.TotalFee.String(),
 		"walletBalanceDiff", result.WalletBalanceDiff.String())

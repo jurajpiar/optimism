@@ -160,8 +160,9 @@ func TestEstimateEIP1559Fees(t *testing.T) {
 		t.Run("should set the GasFeeCap to the sum of block base fee and tip", func(t *testing.T) {
 			baseFeeValue := big.NewInt(5)
 			blockValue := types.NewBlock(&types.Header{
-				BaseFee: baseFeeValue,
-				Time:    0,
+				EthBaseFee:         baseFeeValue,
+				Time:               0,
+				RskMinimumGasPrice: baseFeeValue,
 			}, nil, nil, nil, &mockBlockType{})
 
 			// We expect the total gas cap to be the base fee plus the tip cap
@@ -187,8 +188,9 @@ func TestEstimateEIP1559Fees(t *testing.T) {
 
 		t.Run("should set the GasFeeCap to nil if the base fee is nil", func(t *testing.T) {
 			blockValue := types.NewBlock(&types.Header{
-				BaseFee: nil,
-				Time:    0,
+				EthBaseFee:         nil,
+				Time:               0,
+				RskMinimumGasPrice: nil,
 			}, nil, nil, nil, &mockBlockType{})
 
 			feeEstimator := NewEIP1559FeeEstimator(&mockFeeEthClientImpl{
@@ -214,8 +216,9 @@ func TestEstimateEIP1559Fees(t *testing.T) {
 				baseMultiplier := 1.2
 				baseFeeValue := big.NewInt(9)
 				blockValue := types.NewBlock(&types.Header{
-					BaseFee: baseFeeValue,
-					Time:    0,
+					EthBaseFee:         baseFeeValue,
+					RskMinimumGasPrice: baseFeeValue,
+					Time:               0,
 				}, nil, nil, nil, &mockBlockType{})
 
 				// We expect the total gas cap to be the base fee (9) multiplied by 1.2 (= 10.8, rounded up to 11) plus the tip cap (1)

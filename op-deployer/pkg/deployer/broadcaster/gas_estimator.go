@@ -31,13 +31,13 @@ func DeployerGasPriceEstimator(ctx context.Context, client txmgr.ETHBackend) (*b
 		return nil, nil, nil, fmt.Errorf("failed to get block: %w", err)
 	}
 
-	tip, err := client.SuggestGasTipCap(ctx)
+	tip, err := client.SuggestGasPrice(ctx)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get gas tip cap: %w", err)
 	}
 
-	baseFeePad := new(big.Int).Div(chainHead.BaseFee, baseFeePadFactor)
-	paddedBaseFee := new(big.Int).Add(chainHead.BaseFee, baseFeePad)
+	baseFeePad := new(big.Int).Div(chainHead.BaseFee(), baseFeePadFactor)
+	paddedBaseFee := new(big.Int).Add(chainHead.BaseFee(), baseFeePad)
 	paddedTip := new(big.Int).Mul(tip, tipMulFactor)
 
 	if paddedTip.Cmp(minTip) < 0 {

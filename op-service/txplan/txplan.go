@@ -415,7 +415,7 @@ func WithBlobs(blobs []*eth.Blob, config *params.ChainConfig) Option {
 }
 
 func (tx *PlannedTx) Defaults() {
-	tx.Type.Set(types.DynamicFeeTxType)
+	tx.Type.Set(types.LegacyTxType)
 	tx.To.Set(nil)
 	tx.Data.Set([]byte{})
 	tx.ChainID.Set(eth.ChainIDFromUInt64(1))
@@ -427,16 +427,16 @@ func (tx *PlannedTx) Defaults() {
 	tx.AccessList.Set(types.AccessList{})
 	tx.AuthList.Set([]types.SetCodeAuthorization{})
 
-	// Bump the fee-cap to be at least as high as the tip-cap,
-	// and as high as the basefee.
-	tx.GasFeeCap.DependOn(&tx.GasTipCap, &tx.AgainstBlock)
-	tx.GasFeeCap.Fn(func(ctx context.Context) (*big.Int, error) {
-		tip := tx.GasTipCap.Value()
-		basefee := tx.AgainstBlock.Value().BaseFee()
-		feeCap := big.NewInt(0)
-		feeCap = feeCap.Add(tip, basefee)
-		return feeCap, nil
-	})
+	// // Bump the fee-cap to be at least as high as the tip-cap,
+	// // and as high as the basefee.
+	// tx.GasFeeCap.DependOn(&tx.GasTipCap, &tx.AgainstBlock)
+	// tx.GasFeeCap.Fn(func(ctx context.Context) (*big.Int, error) {
+	// 	tip := tx.GasTipCap.Value()
+	// 	basefee := tx.AgainstBlock.Value().BaseFee()
+	// 	feeCap := big.NewInt(0)
+	// 	feeCap = feeCap.Add(tip, basefee)
+	// 	return feeCap, nil
+	// })
 
 	// Automatically determine tx-signer from chainID
 	tx.Signer.DependOn(&tx.ChainID)

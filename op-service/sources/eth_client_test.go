@@ -79,7 +79,7 @@ func randHeader() (*types.Header, *RPCHeader) {
 		Extra:       make([]byte, 0),
 		MixDigest:   randHash(),
 		Nonce:       types.BlockNonce{},
-		BaseFee:     big.NewInt(100),
+		EthBaseFee:  big.NewInt(100),
 	}
 	rhdr := &RPCHeader{
 		ParentHash:  hdr.ParentHash,
@@ -97,7 +97,7 @@ func randHeader() (*types.Header, *RPCHeader) {
 		Extra:       hdr.Extra,
 		MixDigest:   hdr.MixDigest,
 		Nonce:       hdr.Nonce,
-		BaseFee:     (*hexutil.Big)(hdr.BaseFee),
+		EthBaseFee:  (*hexutil.Big)(hdr.EthBaseFee),
 		Hash:        hdr.Hash(),
 	}
 	return hdr, rhdr

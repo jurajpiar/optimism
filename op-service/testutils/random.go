@@ -325,22 +325,23 @@ func RandomReceipt(rng *rand.Rand, signer types.Signer, tx *types.Transaction, t
 
 func RandomHeaderWithTime(rng *rand.Rand, t uint64) *types.Header {
 	return &types.Header{
-		ParentHash:  RandomHash(rng),
-		UncleHash:   types.EmptyUncleHash,
-		Coinbase:    RandomAddress(rng),
-		Root:        RandomHash(rng),
-		TxHash:      types.EmptyRootHash,
-		ReceiptHash: types.EmptyRootHash,
-		Bloom:       types.Bloom{},
-		Difficulty:  big.NewInt(0),
-		Number:      big.NewInt(1 + rng.Int63n(100_000_000)),
-		GasLimit:    0,
-		GasUsed:     0,
-		Time:        t,
-		Extra:       RandomData(rng, rng.Intn(33)),
-		MixDigest:   common.Hash{},
-		Nonce:       types.BlockNonce{},
-		BaseFee:     big.NewInt(rng.Int63n(300_000_000_000)),
+		ParentHash:         RandomHash(rng),
+		UncleHash:          types.EmptyUncleHash,
+		Coinbase:           RandomAddress(rng),
+		Root:               RandomHash(rng),
+		TxHash:             types.EmptyRootHash,
+		ReceiptHash:        types.EmptyRootHash,
+		Bloom:              types.Bloom{},
+		Difficulty:         big.NewInt(0),
+		Number:             big.NewInt(1 + rng.Int63n(100_000_000)),
+		GasLimit:           0,
+		GasUsed:            0,
+		Time:               t,
+		Extra:              RandomData(rng, rng.Intn(33)),
+		MixDigest:          common.Hash{},
+		Nonce:              types.BlockNonce{},
+		EthBaseFee:         big.NewInt(rng.Int63n(300_000_000_000)),
+		RskMinimumGasPrice: big.NewInt(rng.Int63n(300_000_000_000)),
 	}
 }
 
@@ -364,7 +365,7 @@ func RandomBlockPrependTxsWithTime(rng *rand.Rand, txCount int, t uint64, ptxs .
 	txs := make([]*types.Transaction, 0, txCount+len(ptxs))
 	txs = append(txs, ptxs...)
 	for i := 0; i < txCount; i++ {
-		txs = append(txs, RandomTx(rng, header.BaseFee, signer))
+		txs = append(txs, RandomTx(rng, header.BaseFee(), signer))
 	}
 	receipts := make([]*types.Receipt, 0, len(txs))
 	cumulativeGasUsed := uint64(0)

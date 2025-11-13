@@ -48,7 +48,10 @@ type RPCHeader struct {
 	Nonce       types.BlockNonce `json:"nonce"`
 
 	// BaseFee was added by EIP-1559 and is ignored in legacy headers.
-	BaseFee *hexutil.Big `json:"baseFeePerGas"`
+	EthBaseFee *hexutil.Big `json:"baseFeePerGas"`
+
+	// Rootstock specific
+	RskMinimumGasPrice *hexutil.Big `json:"minimumGasPrice,omitempty"`
 
 	// WithdrawalsRoot was added by EIP-4895 and is ignored in legacy headers.
 	WithdrawalsRoot *common.Hash `json:"withdrawalsRoot,omitempty"`
@@ -72,6 +75,9 @@ type RPCHeader struct {
 // checkPostMerge checks that the block header meets all criteria to be a valid ExecutionPayloadHeader,
 // see EIP-3675 (block header changes) and EIP-4399 (mixHash usage for prev-randao)
 func (hdr *RPCHeader) checkPostMerge() error {
+	if hdr.isL1Block() {
+		return nil
+	}
 	// TODO: the genesis block has a non-zero difficulty number value.
 	// Either this block needs to change, or we special case it. This is not valid w.r.t. EIP-3675.
 	if hdr.Number != 0 && (*big.Int)(&hdr.Difficulty).Cmp(common.Big0) != 0 {
@@ -80,8 +86,8 @@ func (hdr *RPCHeader) checkPostMerge() error {
 	if hdr.Nonce != (types.BlockNonce{}) {
 		return fmt.Errorf("post-merge block header requires zeroed block nonce field, but got: %s", hdr.Nonce)
 	}
-	if hdr.BaseFee == nil {
-		return fmt.Errorf("post-merge block header requires EIP-1559 base fee field, but got %s", hdr.BaseFee)
+	if hdr.BaseFee() == nil {
+		return fmt.Errorf("post-merge block header requires EIP-1559 base fee field, but got %s", hdr.BaseFee())
 	}
 	if len(hdr.Extra) > 32 {
 		return fmt.Errorf("post-merge block header requires 32 or less bytes of extra data, but got %d", len(hdr.Extra))
@@ -93,8 +99,13 @@ func (hdr *RPCHeader) checkPostMerge() error {
 }
 
 func (hdr *RPCHeader) computeBlockHash() common.Hash {
-	gethHeader := hdr.CreateGethHeader()
-	return gethHeader.Hash()
+	if hdr.isL1Block() {
+		// TODO(rootstock) properly compute Rootstock hash from fields: for this we need a 100% mapped Rootstock block
+		return hdr.Hash
+	} else {
+		gethHeader := hdr.CreateGethHeader()
+		return gethHeader.Hash()
+	}
 }
 
 func (hdr *RPCHeader) CreateGethHeader() *types.Header {
@@ -114,7 +125,7 @@ func (hdr *RPCHeader) CreateGethHeader() *types.Header {
 		Extra:           hdr.Extra,
 		MixDigest:       hdr.MixDigest,
 		Nonce:           hdr.Nonce,
-		BaseFee:         (*big.Int)(hdr.BaseFee),
+		EthBaseFee:      (*big.Int)(hdr.BaseFee()),
 		WithdrawalsHash: hdr.WithdrawalsRoot,
 		// Cancun
 		BlobGasUsed:      (*uint64)(hdr.BlobGasUsed),
@@ -125,6 +136,17 @@ func (hdr *RPCHeader) CreateGethHeader() *types.Header {
 	}
 }
 
+func (hdr *RPCHeader) isL1Block() bool {
+	return hdr.RskMinimumGasPrice != nil
+}
+
+func (hdr *RPCHeader) BaseFee() *hexutil.Big {
+	if hdr.isL1Block() {
+		return hdr.RskMinimumGasPrice
+	} else {
+		return hdr.EthBaseFee
+	}
+}
 func (hdr *RPCHeader) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInfo, error) {
 	if mustBePostMerge {
 		if err := hdr.checkPostMerge(); err != nil {
@@ -243,7 +265,7 @@ func (block *RPCBlock) ExecutionPayloadEnvelope(trustCache bool) (*eth.Execution
 		}
 	}
 	var baseFee uint256.Int
-	baseFee.SetFromBig((*big.Int)(block.BaseFee))
+	baseFee.SetFromBig((*big.Int)(block.BaseFee()))
 
 	// Unfortunately eth_getBlockByNumber either returns full transactions, or only tx-hashes.
 	// There is no option for encoded transactions.
