@@ -111,44 +111,47 @@ func (t *KeyedBroadcaster) Broadcast(ctx context.Context) ([]BroadcastResult, er
 	}
 
 	results := make([]BroadcastResult, len(bcasts))
-	futures := make([]<-chan txmgr.SendResponse, len(bcasts))
-	ids := make([]common.Hash, len(bcasts))
 
 	latestBlock, err := t.client.BlockByNumber(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest block: %w", err)
 	}
 
+	var txErr *multierror.Error
 	for i, bcast := range bcasts {
-		futures[i], ids[i] = t.broadcast(ctx, bcast, latestBlock.GasLimit())
+		t.lgr.Info(
+			"broadcasting transaction", i, "of", len(bcasts),
+			"nonce", bcast.Nonce,
+			"value", bcast.Value,
+			"type", bcast.Type,
+			"to", bcast.To,
+			"input", bcast.Input,
+		)
+
+		response, id := t.broadcast(ctx, bcast, latestBlock.GasLimit())
 		t.lgr.Info(
 			"transaction broadcasted",
-			"id", ids[i],
+			"id", id,
 			"nonce", bcast.Nonce,
+			"salt", bcast.Salt,
+			"gasUsed", bcast.GasUsed,
 		)
-	}
 
-	var txErr *multierror.Error
-	var completed int
-	for i, fut := range futures {
-		bcastRes := <-fut
-		completed++
 		outRes := BroadcastResult{
 			Broadcast: bcasts[i],
 		}
 
-		if bcastRes.Err == nil {
-			outRes.Receipt = bcastRes.Receipt
-			outRes.TxHash = bcastRes.Receipt.TxHash
+		if response.Err == nil {
+			outRes.Receipt = response.Receipt
+			outRes.TxHash = response.Receipt.TxHash
 
-			if bcastRes.Receipt.Status == 0 {
+			if response.Receipt.Status == 0 {
 				failErr := fmt.Errorf("transaction failed: %s", outRes.Receipt.TxHash.String())
 				txErr = multierror.Append(txErr, failErr)
 				outRes.Err = failErr
 				t.lgr.Error(
 					"transaction failed on chain",
-					"id", ids[i],
-					"completed", completed,
+					"id", id,
 					"total", len(bcasts),
 					"hash", outRes.Receipt.TxHash.String(),
 					"nonce", outRes.Broadcast.Nonce,
@@ -156,8 +159,7 @@ func (t *KeyedBroadcaster) Broadcast(ctx context.Context) ([]BroadcastResult, er
 			} else {
 				t.lgr.Info(
 					"transaction confirmed",
-					"id", ids[i],
-					"completed", completed,
+					"id", id,
 					"total", len(bcasts),
 					"hash", outRes.Receipt.TxHash.String(),
 					"nonce", outRes.Broadcast.Nonce,
@@ -165,14 +167,13 @@ func (t *KeyedBroadcaster) Broadcast(ctx context.Context) ([]BroadcastResult, er
 				)
 			}
 		} else {
-			txErr = multierror.Append(txErr, bcastRes.Err)
-			outRes.Err = bcastRes.Err
+			txErr = multierror.Append(txErr, response.Err)
+			outRes.Err = response.Err
 			t.lgr.Error(
 				"transaction failed",
-				"id", ids[i],
-				"completed", completed,
+				"id", id,
 				"total", len(bcasts),
-				"err", bcastRes.Err,
+				"err", response.Err,
 			)
 		}
 
@@ -181,13 +182,11 @@ func (t *KeyedBroadcaster) Broadcast(ctx context.Context) ([]BroadcastResult, er
 	return results, txErr.ErrorOrNil()
 }
 
-func (t *KeyedBroadcaster) broadcast(ctx context.Context, bcast script.Broadcast, blockGasLimit uint64) (<-chan txmgr.SendResponse, common.Hash) {
-	ch := make(chan txmgr.SendResponse, 1)
-
+func (t *KeyedBroadcaster) broadcast(ctx context.Context, bcast script.Broadcast, blockGasLimit uint64) (txmgr.SendResponse, common.Hash) {
 	id := bcast.ID()
 	candidate := asTxCandidate(bcast, blockGasLimit)
-	t.mgr.SendAsync(ctx, candidate, ch)
-	return ch, id
+	receipt, err := t.mgr.Send(ctx, candidate)
+	return txmgr.SendResponse{Receipt: receipt, Err: err}, id
 }
 
 func asTxCandidate(bcast script.Broadcast, blockGasLimit uint64) txmgr.TxCandidate {
