@@ -363,6 +363,7 @@ func (fst *ForkableState) PointCache() *utils.PointCache {
 }
 
 func (fst *ForkableState) Prepare(rules params.Rules, sender, coinbase common.Address, dest *common.Address, precompiles []common.Address, txAccesses types.AccessList) {
+	fmt.Println("forking.go ~ ForkableState ~ Prepare ~ Preparing state", rules, sender, coinbase, dest, precompiles, txAccesses)
 	fst.selected.Prepare(rules, sender, coinbase, dest, precompiles, txAccesses)
 }
 

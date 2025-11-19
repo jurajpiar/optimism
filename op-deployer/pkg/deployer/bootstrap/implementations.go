@@ -238,11 +238,12 @@ func Implementations(ctx context.Context, cfg ImplementationsConfig) (opcm.Deplo
 	); err != nil {
 		return dio, fmt.Errorf("error deploying implementations: %w", err)
 	}
+	lgr.Info("deployed implementations")
 
 	if _, err := bcaster.Broadcast(ctx); err != nil {
 		return dio, fmt.Errorf("failed to broadcast: %w", err)
 	}
 
-	lgr.Info("deployed implementations")
+	lgr.Info("broadcasted implementations")
 	return dio, nil
 }

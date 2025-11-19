@@ -145,22 +145,27 @@ func SuperchainCLI(cliCtx *cli.Context) error {
 func Superchain(ctx context.Context, cfg SuperchainConfig) (opcm.DeploySuperchainOutput, error) {
 	var dso opcm.DeploySuperchainOutput
 
+	fmt.Println("bootstrap.go ~ Superchain ~ Checking config")
 	if err := cfg.Check(); err != nil {
 		return dso, fmt.Errorf("invalid config for Superchain: %w", err)
 	}
 
 	lgr := cfg.Logger
 	cacheDir := cfg.CacheDir
+	fmt.Println("bootstrap.go ~ Superchain ~ Downloading artifacts from", cfg.ArtifactsLocator)
+	fmt.Println("bootstrap.go ~ Superchain ~ Downloading artifacts to", cacheDir)
 	artifactsFS, err := artifacts.Download(ctx, cfg.ArtifactsLocator, ioutil.BarProgressor(), cacheDir)
 	if err != nil {
 		return dso, fmt.Errorf("failed to download artifacts: %w", err)
 	}
 
+	fmt.Println("bootstrap.go ~ Superchain ~ Downloading artifacts")
 	l1Client, err := ethclient.Dial(cfg.L1RPCUrl)
 	if err != nil {
 		return dso, fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
+	fmt.Println("bootstrap.go ~ Superchain ~ Getting chain ID")
 	chainID, err := l1Client.ChainID(ctx)
 	if err != nil {
 		return dso, fmt.Errorf("failed to get chain ID: %w", err)
@@ -169,6 +174,7 @@ func Superchain(ctx context.Context, cfg SuperchainConfig) (opcm.DeploySuperchai
 	signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(cfg.privateKeyECDSA, chainID))
 	chainDeployer := crypto.PubkeyToAddress(cfg.privateKeyECDSA.PublicKey)
 
+	fmt.Println("bootstrap.go ~ Superchain ~ Creating broadcaster")
 	bcaster, err := broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
 		Logger:  lgr,
 		ChainID: chainID,
@@ -180,11 +186,13 @@ func Superchain(ctx context.Context, cfg SuperchainConfig) (opcm.DeploySuperchai
 		return dso, fmt.Errorf("failed to create broadcaster: %w", err)
 	}
 
+	fmt.Println("bootstrap.go ~ Superchain ~ Connecting to L1 RPC")
 	l1RPC, err := rpc.Dial(cfg.L1RPCUrl)
 	if err != nil {
 		return dso, fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
+	fmt.Println("bootstrap.go ~ Superchain ~ Creating script host")
 	l1Host, err := env.DefaultForkedScriptHost(
 		ctx,
 		bcaster,
@@ -197,11 +205,13 @@ func Superchain(ctx context.Context, cfg SuperchainConfig) (opcm.DeploySuperchai
 		return dso, fmt.Errorf("failed to create script host: %w", err)
 	}
 
+	fmt.Println("bootstrap.go ~ Superchain ~ Creating scripts")
 	opcmScripts, err := opcm.NewScripts(l1Host)
 	if err != nil {
 		return dso, fmt.Errorf("failed to load OPCM scripts: %w", err)
 	}
 
+	fmt.Println("bootstrap.go ~ Superchain ~ Deploying superchain")
 	dso, err = opcmScripts.DeploySuperchain.Run(
 		opcm.DeploySuperchainInput{
 			SuperchainProxyAdminOwner:  cfg.SuperchainProxyAdminOwner,
@@ -216,9 +226,12 @@ func Superchain(ctx context.Context, cfg SuperchainConfig) (opcm.DeploySuperchai
 		return dso, fmt.Errorf("error deploying superchain: %w", err)
 	}
 
+	fmt.Println("bootstrap.go ~ Superchain ~ Broadcasting superchain")
 	if _, err := bcaster.Broadcast(ctx); err != nil {
 		return dso, fmt.Errorf("failed to broadcast: %w", err)
 	}
+
+	fmt.Println("bootstrap.go ~ Superchain ~ Superchain deployed", dso)
 
 	lgr.Info("deployed superchain configuration")
 

@@ -99,7 +99,9 @@ func (r *RPCSource) Nonce(addr common.Address) (uint64, error) {
 		ctx, cancel := context.WithTimeout(r.ctx, r.timeout)
 		defer cancel()
 		var result hexutil.Uint64
-		err := r.client.CallContext(ctx, &result, "eth_getTransactionCount", addr, r.blockHash)
+		fmt.Println("rpc.go ~ RPCSource ~ Nonce ~ Calling eth_getTransactionCount", addr, "latest")
+		err := r.client.CallContext(ctx, &result, "eth_getTransactionCount", addr, "latest")
+		fmt.Println("rpc.go ~ RPCSource ~ Nonce ~ Result", result, err)
 		return uint64(result), err
 	})
 }
@@ -109,7 +111,7 @@ func (r *RPCSource) Balance(addr common.Address) (*uint256.Int, error) {
 		ctx, cancel := context.WithTimeout(r.ctx, r.timeout)
 		defer cancel()
 		var result hexutil.U256
-		err := r.client.CallContext(ctx, &result, "eth_getBalance", addr, r.blockHash)
+		err := r.client.CallContext(ctx, &result, "eth_getBalance", addr, "latest")
 		return (*uint256.Int)(&result), err
 	})
 }
@@ -119,7 +121,7 @@ func (r *RPCSource) StorageAt(addr common.Address, key common.Hash) (common.Hash
 		ctx, cancel := context.WithTimeout(r.ctx, r.timeout)
 		defer cancel()
 		var result common.Hash
-		err := r.client.CallContext(ctx, &result, "eth_getStorageAt", addr, key, r.blockHash)
+		err := r.client.CallContext(ctx, &result, "eth_getStorageAt", addr, key, "latest")
 		return result, err
 	})
 }
@@ -129,7 +131,7 @@ func (r *RPCSource) Code(addr common.Address) ([]byte, error) {
 		ctx, cancel := context.WithTimeout(r.ctx, r.timeout)
 		defer cancel()
 		var result hexutil.Bytes
-		err := r.client.CallContext(ctx, &result, "eth_getCode", addr, r.blockHash)
+		err := r.client.CallContext(ctx, &result, "eth_getCode", addr, "latest")
 		return result, err
 	})
 }
