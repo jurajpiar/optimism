@@ -341,7 +341,79 @@ contract Deploy is Deployer {
         IOPContractsManager opcm = IOPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
 
         IOPContractsManager.DeployInput memory deployInput = getDeployInput();
-        IOPContractsManager.DeployOutput memory deployOutput = opcm.deploy(deployInput);
+        IOPContractsManager.DeployOutput memory deployOutput;
+
+        console.log("Deploying Address Manager using opcm");
+        vm.broadcast(msg.sender);
+        deployOutput = opcm.deployAddressManager(deployInput, deployOutput);
+
+        console.log("Deploying Proxy Admin using opcm");
+        vm.broadcast(msg.sender);
+        deployOutput = opcm.deployProxyAdmin(deployInput, deployOutput);
+
+        console.log("Deploying L1 ERC721 Bridge using opcm");
+        vm.broadcast(msg.sender);
+        deployOutput = opcm.deployL1ERC721Bridge(deployInput, deployOutput);
+
+        console.log("Deploying Optimism Portal using opcm");
+        vm.broadcast(msg.sender);
+        deployOutput = opcm.deployOptimismPortal(deployInput, deployOutput);
+
+        console.log("Deploying ETH Lockbox using opcm");
+        vm.broadcast(msg.sender);
+        deployOutput = opcm.deployETHLockbox(deployInput, deployOutput);
+
+        console.log("Deploying System Config using opcm");
+        vm.broadcast(msg.sender);
+        deployOutput = opcm.deploySystemConfig(deployInput, deployOutput);
+
+
+        console.log("Deploying Optimism Mintable ERC20 Factory using opcm");
+        vm.broadcast(msg.sender);
+        deployOutput = opcm.deployOptimismMintableERC20Factory(deployInput, deployOutput);
+
+        console.log("Deploying Dispute Game Factory using opcm");
+        vm.broadcast(msg.sender);
+        deployOutput = opcm.deployDisputeGameFactory(deployInput, deployOutput);
+
+        console.log("Deploying Anchor State Registry using opcm");
+        vm.broadcast(msg.sender);
+        deployOutput = opcm.deployAnchorStateRegistry(deployInput, deployOutput);
+
+        console.log("Deploying L1 Standard Bridge using opcm");
+        vm.broadcast(msg.sender);
+        deployOutput = opcm.deployL1StandardBridge(deployInput, deployOutput);
+
+        console.log("Deploying L1 Cross Domain Messenger using opcm");
+        vm.broadcast(msg.sender);
+        deployOutput = opcm.deployL1CrossDomainMessenger(deployInput, deployOutput);
+
+        console.log("Deploying Delayed WETH Permissioned Game using opcm");
+        vm.broadcast(msg.sender);
+        deployOutput = opcm.deployDelayedWETHPermissionedGame(deployInput, deployOutput);
+
+        console.log("Deploying Permissioned Dispute Game using opcm");
+        vm.broadcast(msg.sender);
+        deployOutput = opcm.deployPermissionedDisputeGame(deployInput, deployOutput);
+
+        console.log("Setting and initializing proxy implementations using opcm");
+        vm.broadcast(msg.sender);
+        deployOutput = opcm.setAndInitializeProxyImplementations(deployInput, deployOutput);
+
+        console.log("All contracts deployed:");
+        console.log("opChainProxyAdmin: %s", address(deployOutput.opChainProxyAdmin));
+        console.log("addressManager: %s", address(deployOutput.addressManager));
+        console.log("l1ERC721BridgeProxy: %s", address(deployOutput.l1ERC721BridgeProxy));
+        console.log("systemConfigProxy: %s", address(deployOutput.systemConfigProxy));
+        console.log("optimismMintableERC20FactoryProxy: %s", address(deployOutput.optimismMintableERC20FactoryProxy));
+        console.log("l1StandardBridgeProxy: %s", address(deployOutput.l1StandardBridgeProxy));
+        console.log("l1CrossDomainMessengerProxy: %s", address(deployOutput.l1CrossDomainMessengerProxy));
+        console.log("ethLockboxProxy: %s", address(deployOutput.ethLockboxProxy));
+        console.log("disputeGameFactoryProxy: %s", address(deployOutput.disputeGameFactoryProxy));
+        console.log("anchorStateRegistryProxy: %s", address(deployOutput.anchorStateRegistryProxy));
+        console.log("permissionedDisputeGame: %s", address(deployOutput.permissionedDisputeGame));
+        console.log("delayedWETHPermissionedGameProxy: %s", address(deployOutput.delayedWETHPermissionedGameProxy));
+        console.log("delayedWETHPermissionlessGameProxy: %s", address(deployOutput.delayedWETHPermissionlessGameProxy));
 
         // Store code in the Final system owner address so that it can be used for prank delegatecalls
         // Store "fe" opcode so that accidental calls to this address revert

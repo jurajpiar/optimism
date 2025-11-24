@@ -380,15 +380,24 @@ func (h *Host) Call(from common.Address, to common.Address, input []byte, gas ui
 		h.evmRevertErr = nil
 	}()
 
-	if len(input) > 0 {
-		fmt.Println("script.go ~ Host ~ Call ~ Input", input[:10])
+	inputLen := len(input)
+	if inputLen > 0 {
+		if inputLen >= 10 {
+			fmt.Println("script.go ~ Host ~ Call ~ Input", input[:10])
+		} else {
+			fmt.Println("script.go ~ Host ~ Call ~ Input", input)
+		}
 	} else {
 		fmt.Println("script.go ~ Host ~ Call ~ Input is empty")
 	}
 	fmt.Println("script.go ~ Host ~ Call ~ Calling contract", from, to, gas, value)
 	returnData, leftOverGas, err = h.env.Call(from, to, input, gas, value)
 	if len(returnData) > 0 {
-		fmt.Println("script.go ~ Host ~ Call ~ Returned data", returnData[:10])
+		if len(returnData) >= 10 {
+			fmt.Println("script.go ~ Host ~ Call ~ Returned data", returnData[:10])
+		} else {
+			fmt.Println("script.go ~ Host ~ Call ~ Returned data", returnData)
+		}
 	} else {
 		fmt.Println("script.go ~ Host ~ Call ~ Returned data is empty")
 	}

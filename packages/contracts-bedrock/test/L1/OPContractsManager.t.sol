@@ -467,37 +467,86 @@ abstract contract OPContractsManager_TestInit is CommonTest, DisputeGames {
     /// @param _l2ChainId The L2 chain ID to deploy the contracts for.
     /// @return The deployed contracts.
     function createChainContracts(uint256 _l2ChainId) internal returns (IOPContractsManager.DeployOutput memory) {
-        return opcm.deploy(
-            IOPContractsManager.DeployInput({
-                roles: IOPContractsManager.Roles({
-                    opChainProxyAdminOwner: address(this),
-                    systemConfigOwner: address(this),
-                    batcher: address(this),
-                    unsafeBlockSigner: address(this),
-                    proposer: proposer,
-                    challenger: challenger
-                }),
-                basefeeScalar: 1,
-                blobBasefeeScalar: 1,
-                startingAnchorRoot: abi.encode(
-                    Proposal({
-                        root: Hash.wrap(0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef),
-                        l2SequenceNumber: 0
-                    })
-                ),
-                l2ChainId: _l2ChainId,
-                saltMixer: "hello",
-                gasLimit: 30_000_000,
-                disputeGameType: GameType.wrap(1),
-                disputeAbsolutePrestate: Claim.wrap(
-                    bytes32(hex"038512e02c4c3f7bdaec27d00edf55b7155e0905301e1a88083e4e0a6764d54c")
-                ),
-                disputeMaxGameDepth: 73,
-                disputeSplitDepth: 30,
-                disputeClockExtension: Duration.wrap(10800),
-                disputeMaxClockDuration: Duration.wrap(302400)
-            })
-        );
+        // return opcm.deploy(
+        //     IOPContractsManager.DeployInput({
+        //         roles: IOPContractsManager.Roles({
+        //             opChainProxyAdminOwner: address(this),
+        //             systemConfigOwner: address(this),
+        //             batcher: address(this),
+        //             unsafeBlockSigner: address(this),
+        //             proposer: proposer,
+        //             challenger: challenger
+        //         }),
+        //         basefeeScalar: 1,
+        //         blobBasefeeScalar: 1,
+        //         startingAnchorRoot: abi.encode(
+        //             Proposal({
+        //                 root: Hash.wrap(0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef),
+        //                 l2SequenceNumber: 0
+        //             })
+        //         ),
+        //         l2ChainId: _l2ChainId,
+        //         saltMixer: "hello",
+        //         gasLimit: 30_000_000,
+        //         disputeGameType: GameType.wrap(1),
+        //         disputeAbsolutePrestate: Claim.wrap(
+        //             bytes32(hex"038512e02c4c3f7bdaec27d00edf55b7155e0905301e1a88083e4e0a6764d54c")
+        //         ),
+        //         disputeMaxGameDepth: 73,
+        //         disputeSplitDepth: 30,
+        //         disputeClockExtension: Duration.wrap(10800),
+        //         disputeMaxClockDuration: Duration.wrap(302400)
+        //     })
+        // );
+
+        IOPContractsManager.DeployInput memory deployInput = IOPContractsManager.DeployInput({
+            roles: IOPContractsManager.Roles({
+                opChainProxyAdminOwner: address(this),
+                systemConfigOwner: address(this),
+                batcher: address(this),
+                unsafeBlockSigner: address(this),
+                proposer: proposer,
+                challenger: challenger
+            }),
+            basefeeScalar: 1,
+            blobBasefeeScalar: 1,
+            startingAnchorRoot: abi.encode(
+                Proposal({
+                    root: Hash.wrap(0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef),
+                    l2SequenceNumber: 0
+                })
+            ),
+            l2ChainId: _l2ChainId,
+            saltMixer: "hello",
+            gasLimit: 30_000_000,
+            disputeGameType: GameType.wrap(1),
+            disputeAbsolutePrestate: Claim.wrap(
+                bytes32(hex"038512e02c4c3f7bdaec27d00edf55b7155e0905301e1a88083e4e0a6764d54c")
+            ),
+            disputeMaxGameDepth: 73,
+            disputeSplitDepth: 30,
+            disputeClockExtension: Duration.wrap(10800),
+            disputeMaxClockDuration: Duration.wrap(302400)
+        });
+
+        IOPContractsManager.DeployOutput memory deployOutput;
+
+        deployOutput = opcm.deployAddressManager(deployInput, deployOutput);
+        deployOutput = opcm.deployProxyAdmin(deployInput, deployOutput);
+        deployOutput = opcm.deployL1ERC721Bridge(deployInput, deployOutput);
+        deployOutput = opcm.deployOptimismPortal(deployInput, deployOutput);
+        deployOutput = opcm.deployETHLockbox(deployInput, deployOutput);
+        deployOutput = opcm.deploySystemConfig(deployInput, deployOutput);
+        deployOutput = opcm.deployOptimismMintableERC20Factory(deployInput, deployOutput);
+        deployOutput = opcm.deployDisputeGameFactory(deployInput, deployOutput);
+        deployOutput = opcm.deployAnchorStateRegistry(deployInput, deployOutput);
+        deployOutput = opcm.deployL1StandardBridge(deployInput, deployOutput);
+        deployOutput = opcm.deployL1CrossDomainMessenger(deployInput, deployOutput);
+        deployOutput = opcm.deployDelayedWETHPermissionedGame(deployInput, deployOutput);
+        deployOutput = opcm.deployPermissionedDisputeGame(deployInput, deployOutput);
+        deployOutput = opcm.setAndInitializeProxyImplementations(deployInput, deployOutput);
+
+        return deployOutput;
     }
 
     function addGameType(IOPContractsManager.AddGameInput memory input)
@@ -1467,7 +1516,22 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         IOPContractsManager.DeployInput memory deployInput = deploy.getDeployInput();
         deployInput.l2ChainId = l2ChainId;
         deployInput.saltMixer = "v2.0.0";
-        opcm.deploy(deployInput);
+
+        IOPContractsManager.DeployOutput memory deployOutput;
+        deployOutput = opcm.deployAddressManager(deployInput, deployOutput);
+        deployOutput = opcm.deployProxyAdmin(deployInput, deployOutput);
+        deployOutput = opcm.deployL1ERC721Bridge(deployInput, deployOutput);
+        deployOutput = opcm.deployOptimismPortal(deployInput, deployOutput);
+        deployOutput = opcm.deployETHLockbox(deployInput, deployOutput);
+        deployOutput = opcm.deploySystemConfig(deployInput, deployOutput);
+        deployOutput = opcm.deployOptimismMintableERC20Factory(deployInput, deployOutput);
+        deployOutput = opcm.deployDisputeGameFactory(deployInput, deployOutput);
+        deployOutput = opcm.deployAnchorStateRegistry(deployInput, deployOutput);
+        deployOutput = opcm.deployL1StandardBridge(deployInput, deployOutput);
+        deployOutput = opcm.deployL1CrossDomainMessenger(deployInput, deployOutput);
+        deployOutput = opcm.deployDelayedWETHPermissionedGame(deployInput, deployOutput);
+        deployOutput = opcm.deployPermissionedDisputeGame(deployInput, deployOutput);
+        deployOutput = opcm.setAndInitializeProxyImplementations(deployInput, deployOutput);
 
         // Try to upgrade the current OPChain
         runCurrentUpgrade(upgrader);
@@ -2267,22 +2331,69 @@ contract OPContractsManager_Deploy_Test is DeployOPChain_TestBase, DisputeGames 
         IOPContractsManager.DeployInput memory input = toOPCMDeployInput(deployOPChainInput);
         input.l2ChainId = 0;
 
-        vm.expectRevert(IOPContractsManager.InvalidChainId.selector);
-        opcm.deploy(input);
+        vm.expectRevert(IOPContractsManager.InvalidChainId.selector); // TODO move it to the right place
+
+        IOPContractsManager.DeployOutput memory deployOutput;
+        deployOutput = opcm.deployAddressManager(input, deployOutput);
+        deployOutput = opcm.deployProxyAdmin(input, deployOutput);
+        deployOutput = opcm.deployL1ERC721Bridge(input, deployOutput);
+        deployOutput = opcm.deployOptimismPortal(input, deployOutput);
+        deployOutput = opcm.deployETHLockbox(input, deployOutput);
+        deployOutput = opcm.deploySystemConfig(input, deployOutput);
+        deployOutput = opcm.deployOptimismMintableERC20Factory(input, deployOutput);
+        deployOutput = opcm.deployDisputeGameFactory(input, deployOutput);
+        deployOutput = opcm.deployAnchorStateRegistry(input, deployOutput);
+        deployOutput = opcm.deployL1StandardBridge(input, deployOutput);
+        deployOutput = opcm.deployL1CrossDomainMessenger(input, deployOutput);
+        deployOutput = opcm.deployDelayedWETHPermissionedGame(input, deployOutput);
+        deployOutput = opcm.deployPermissionedDisputeGame(input, deployOutput);
+        deployOutput = opcm.setAndInitializeProxyImplementations(input, deployOutput);
     }
 
     function test_deploy_l2ChainIdEqualsCurrentChainId_reverts() public {
         IOPContractsManager.DeployInput memory input = toOPCMDeployInput(deployOPChainInput);
         input.l2ChainId = block.chainid;
 
-        vm.expectRevert(IOPContractsManager.InvalidChainId.selector);
-        opcm.deploy(input);
+
+        IOPContractsManager.DeployOutput memory deployOutput;
+
+        vm.expectRevert(IOPContractsManager.InvalidChainId.selector); // TODO move it to the right place
+        deployOutput = opcm.deployAddressManager(input, deployOutput);
+        deployOutput = opcm.deployProxyAdmin(input, deployOutput);
+        deployOutput = opcm.deployL1ERC721Bridge(input, deployOutput);
+        deployOutput = opcm.deployOptimismPortal(input, deployOutput);
+        deployOutput = opcm.deployETHLockbox(input, deployOutput);
+        deployOutput = opcm.deploySystemConfig(input, deployOutput);
+        deployOutput = opcm.deployOptimismMintableERC20Factory(input, deployOutput);
+        deployOutput = opcm.deployDisputeGameFactory(input, deployOutput);
+        deployOutput = opcm.deployAnchorStateRegistry(input, deployOutput);
+        deployOutput = opcm.deployL1StandardBridge(input, deployOutput);
+        deployOutput = opcm.deployL1CrossDomainMessenger(input, deployOutput);
+        deployOutput = opcm.deployDelayedWETHPermissionedGame(input, deployOutput);
+        deployOutput = opcm.deployPermissionedDisputeGame(input, deployOutput);
+        deployOutput = opcm.setAndInitializeProxyImplementations(input, deployOutput);
     }
 
     function test_deploy_succeeds() public {
+        IOPContractsManager.DeployInput memory input = toOPCMDeployInput(deployOPChainInput);
+        IOPContractsManager.DeployOutput memory deployOutput;
+        deployOutput = opcm.deployAddressManager(input, deployOutput);
+        deployOutput = opcm.deployProxyAdmin(input, deployOutput);
+        deployOutput = opcm.deployL1ERC721Bridge(input, deployOutput);
+        deployOutput = opcm.deployOptimismPortal(input, deployOutput);
+        deployOutput = opcm.deployETHLockbox(input, deployOutput);
+        deployOutput = opcm.deploySystemConfig(input, deployOutput);
+        deployOutput = opcm.deployOptimismMintableERC20Factory(input, deployOutput);
+        deployOutput = opcm.deployDisputeGameFactory(input, deployOutput);
+        deployOutput = opcm.deployAnchorStateRegistry(input, deployOutput);
+        deployOutput = opcm.deployL1StandardBridge(input, deployOutput);
+        deployOutput = opcm.deployL1CrossDomainMessenger(input, deployOutput);
+        deployOutput = opcm.deployDelayedWETHPermissionedGame(input, deployOutput);
+        deployOutput = opcm.deployPermissionedDisputeGame(input, deployOutput);
+
         vm.expectEmit(true, true, true, false); // TODO precompute the expected `deployOutput`.
-        emit Deployed(deployOPChainInput.l2ChainId, address(this), bytes(""));
-        opcm.deploy(toOPCMDeployInput(deployOPChainInput));
+        emit Deployed(input.l2ChainId, address(this), bytes(""));
+        deployOutput = opcm.setAndInitializeProxyImplementations(input, deployOutput);
     }
 
     /// @notice Test that deploy sets the permissioned dispute game implementation
@@ -2303,7 +2414,21 @@ contract OPContractsManager_Deploy_Test is DeployOPChain_TestBase, DisputeGames 
 
         // Run OPCM.deploy
         IOPContractsManager.DeployInput memory opcmInput = toOPCMDeployInput(deployOPChainInput);
-        IOPContractsManager.DeployOutput memory opcmOutput = opcm.deploy(opcmInput);
+        IOPContractsManager.DeployOutput memory opcmOutput;
+        opcmOutput = opcm.deployAddressManager(opcmInput, opcmOutput);
+        opcmOutput = opcm.deployProxyAdmin(opcmInput, opcmOutput);
+        opcmOutput = opcm.deployL1ERC721Bridge(opcmInput, opcmOutput);
+        opcmOutput = opcm.deployOptimismPortal(opcmInput, opcmOutput);
+        opcmOutput = opcm.deployETHLockbox(opcmInput, opcmOutput);
+        opcmOutput = opcm.deploySystemConfig(opcmInput, opcmOutput);
+        opcmOutput = opcm.deployOptimismMintableERC20Factory(opcmInput, opcmOutput);
+        opcmOutput = opcm.deployDisputeGameFactory(opcmInput, opcmOutput);
+        opcmOutput = opcm.deployAnchorStateRegistry(opcmInput, opcmOutput);
+        opcmOutput = opcm.deployL1StandardBridge(opcmInput, opcmOutput);
+        opcmOutput = opcm.deployL1CrossDomainMessenger(opcmInput, opcmOutput);
+        opcmOutput = opcm.deployDelayedWETHPermissionedGame(opcmInput, opcmOutput);
+        opcmOutput = opcm.deployPermissionedDisputeGame(opcmInput, opcmOutput);
+        opcmOutput = opcm.setAndInitializeProxyImplementations(opcmInput, opcmOutput);
 
         // Verify that the DisputeGameFactory has registered an implementation for the PERMISSIONED_CANNON game type
         address expectedPDGAddress = isV2 ? pdgImpl : address(opcmOutput.permissionedDisputeGame);

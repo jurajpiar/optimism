@@ -1315,105 +1315,226 @@ contract OPContractsManagerDeployer is OPContractsManagerBase {
 
     constructor(OPContractsManagerContractsContainer _contractsContainer) OPContractsManagerBase(_contractsContainer) { }
 
-    /// @notice Deploys a new OP Stack chain.
-    /// @param _input The deploy input parameters for the deployment.
-    /// @param _superchainConfig The superchain config for the chain.
-    /// @param _deployer The address to emit as the deployer address.
-    /// @return The deploy output values of the deployment.
-    function deploy(
+    function deployAddressManager(
         OPContractsManager.DeployInput calldata _input,
         ISuperchainConfig _superchainConfig,
-        address _deployer
+        address _deployer,
+        OPContractsManager.DeployOutput memory _output
     )
         external
-        virtual
         returns (OPContractsManager.DeployOutput memory)
     {
-        assertValidInputs(_input);
-        OPContractsManager.DeployOutput memory output;
         OPContractsManager.Blueprints memory blueprint = getBlueprints();
-        OPContractsManager.Implementations memory implementation = getImplementations();
-
-        // -------- Deploy Chain Singletons --------
-
-        // The AddressManager is used to store the implementation for the L1CrossDomainMessenger
-        // due to it's usage of the legacy ResolvedDelegateProxy.
-        output.addressManager = IAddressManager(
+        _output.addressManager = IAddressManager(
             Blueprint.deployFrom(
                 blueprint.addressManager,
                 computeSalt(_input.l2ChainId, _input.saltMixer, "AddressManager"),
-                abi.encode()
+                abi.encode(address(this))
             )
         );
-        // The ProxyAdmin is the owner of all proxies for the chain. We temporarily set the owner to
-        // this contract, and then transfer ownership to the specified owner at the end of deployment.
-        output.opChainProxyAdmin = IProxyAdmin(
+
+        return _output;
+    }
+
+    function deployProxyAdmin(
+        OPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        OPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (OPContractsManager.DeployOutput memory)
+    {
+        OPContractsManager.Blueprints memory blueprint = getBlueprints();
+        _output.opChainProxyAdmin = IProxyAdmin(
             Blueprint.deployFrom(
                 blueprint.proxyAdmin,
                 computeSalt(_input.l2ChainId, _input.saltMixer, "ProxyAdmin"),
                 abi.encode(address(this))
             )
         );
+
         // Set the AddressManager on the ProxyAdmin.
-        output.opChainProxyAdmin.setAddressManager(output.addressManager);
+        _output.opChainProxyAdmin.setAddressManager(_output.addressManager);
         // Transfer ownership of the AddressManager to the ProxyAdmin.
-        transferOwnership(address(output.addressManager), address(output.opChainProxyAdmin));
+        transferOwnership(address(_output.addressManager), address(_output.opChainProxyAdmin));
 
-        // -------- Deploy Proxy Contracts --------
+        return _output;
+    }
 
-        // Deploy ERC-1967 proxied contracts.
-        output.l1ERC721BridgeProxy =
-            IL1ERC721Bridge(deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "L1ERC721Bridge"));
-        output.optimismPortalProxy = IOptimismPortal(
-            payable(deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "OptimismPortal"))
-        );
-        output.ethLockboxProxy =
-            IETHLockbox(deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "ETHLockbox"));
-        output.systemConfigProxy =
-            ISystemConfig(deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "SystemConfig"));
-        output.optimismMintableERC20FactoryProxy = IOptimismMintableERC20Factory(
-            deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "OptimismMintableERC20Factory")
-        );
-        output.disputeGameFactoryProxy = IDisputeGameFactory(
-            deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "DisputeGameFactory")
-        );
-        output.anchorStateRegistryProxy = IAnchorStateRegistry(
-            deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "AnchorStateRegistry")
-        );
+    function deployL1ERC721Bridge(
+        OPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        OPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (OPContractsManager.DeployOutput memory)
+    {
+        _output.l1ERC721BridgeProxy = IL1ERC721Bridge(deployProxy(_input.l2ChainId, _output.opChainProxyAdmin, _input.saltMixer, "L1ERC721Bridge"));
 
-        // Deploy legacy proxied contracts.
-        output.l1StandardBridgeProxy = IL1StandardBridge(
+        return _output;
+    }
+
+    function deployOptimismPortal(
+        OPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        OPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (OPContractsManager.DeployOutput memory)
+    {
+        _output.optimismPortalProxy = IOptimismPortal(payable(deployProxy(_input.l2ChainId, _output.opChainProxyAdmin, _input.saltMixer, "OptimismPortal")));
+        return _output;
+    }
+
+    function deployETHLockbox(
+        OPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        OPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (OPContractsManager.DeployOutput memory)
+    {
+        _output.ethLockboxProxy = IETHLockbox(deployProxy(_input.l2ChainId, _output.opChainProxyAdmin, _input.saltMixer, "ETHLockbox"));
+        return _output;
+    }
+
+    function deploySystemConfig(
+        OPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        OPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (OPContractsManager.DeployOutput memory)
+    {
+        _output.systemConfigProxy = ISystemConfig(deployProxy(_input.l2ChainId, _output.opChainProxyAdmin, _input.saltMixer, "SystemConfig"));
+        return _output;
+    }
+
+    function deployOptimismMintableERC20Factory(
+        OPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        OPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (OPContractsManager.DeployOutput memory)
+    {
+        _output.optimismMintableERC20FactoryProxy = IOptimismMintableERC20Factory(deployProxy(_input.l2ChainId, _output.opChainProxyAdmin, _input.saltMixer, "OptimismMintableERC20Factory"));
+        return _output;
+    }
+
+    function deployDisputeGameFactory(
+        OPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        OPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (OPContractsManager.DeployOutput memory)
+    {
+        _output.disputeGameFactoryProxy = IDisputeGameFactory(deployProxy(_input.l2ChainId, _output.opChainProxyAdmin, _input.saltMixer, "DisputeGameFactory"));
+        return _output;
+    }
+
+    function deployAnchorStateRegistry(
+        OPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        OPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (OPContractsManager.DeployOutput memory)
+    {
+        _output.anchorStateRegistryProxy = IAnchorStateRegistry(deployProxy(_input.l2ChainId, _output.opChainProxyAdmin, _input.saltMixer, "AnchorStateRegistry"));
+        return _output;
+    }
+
+    function deployL1StandardBridge(
+        OPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        OPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (OPContractsManager.DeployOutput memory)
+    {
+        OPContractsManager.Blueprints memory blueprint = getBlueprints();
+        _output.l1StandardBridgeProxy = IL1StandardBridge(
             payable(
                 Blueprint.deployFrom(
                     blueprint.l1ChugSplashProxy,
                     computeSalt(_input.l2ChainId, _input.saltMixer, "L1StandardBridge"),
-                    abi.encode(output.opChainProxyAdmin)
+                    abi.encode(_output.opChainProxyAdmin)
                 )
             )
         );
-        output.opChainProxyAdmin.setProxyType(address(output.l1StandardBridgeProxy), IProxyAdmin.ProxyType.CHUGSPLASH);
+        _output.opChainProxyAdmin.setProxyType(address(_output.l1StandardBridgeProxy), IProxyAdmin.ProxyType.CHUGSPLASH);
+
+        return _output;
+    }
+
+    function deployL1CrossDomainMessenger(
+        OPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        OPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (OPContractsManager.DeployOutput memory)
+    {
+        OPContractsManager.Blueprints memory blueprint = getBlueprints();
         string memory contractName = "OVM_L1CrossDomainMessenger";
-        output.l1CrossDomainMessengerProxy = IL1CrossDomainMessenger(
+        _output.l1CrossDomainMessengerProxy = IL1CrossDomainMessenger(
             Blueprint.deployFrom(
                 blueprint.resolvedDelegateProxy,
                 computeSalt(_input.l2ChainId, _input.saltMixer, "L1CrossDomainMessenger"),
-                abi.encode(output.addressManager, contractName)
+                abi.encode(_output.addressManager, contractName)
             )
         );
-        output.opChainProxyAdmin.setProxyType(
-            address(output.l1CrossDomainMessengerProxy), IProxyAdmin.ProxyType.RESOLVED
+        _output.opChainProxyAdmin.setProxyType(
+            address(_output.l1CrossDomainMessengerProxy), IProxyAdmin.ProxyType.RESOLVED
         );
-        output.opChainProxyAdmin.setImplementationName(address(output.l1CrossDomainMessengerProxy), contractName);
+        _output.opChainProxyAdmin.setImplementationName(address(_output.l1CrossDomainMessengerProxy), contractName);
 
-        // Eventually we will switch from DelayedWETHPermissionedGameProxy to DelayedWETHPermissionlessGameProxy.
-        output.delayedWETHPermissionedGameProxy = IDelayedWETH(
+        return _output;
+    }
+
+    function deployDelayedWETHPermissionedGame(
+        OPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        OPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (OPContractsManager.DeployOutput memory)
+    {
+        _output.delayedWETHPermissionedGameProxy = IDelayedWETH(
             payable(
-                deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "DelayedWETHPermissionedGame")
+                deployProxy(_input.l2ChainId, _output.opChainProxyAdmin, _input.saltMixer, "DelayedWETHPermissionedGame")
             )
         );
+        return _output;
+    }
 
+    function deployPermissionedDisputeGame(
+        OPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        OPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (OPContractsManager.DeployOutput memory)
+    {
         if (!isDevFeatureEnabled(DevFeatures.DEPLOY_V2_DISPUTE_GAMES)) {
-            output.permissionedDisputeGame = IPermissionedDisputeGame(
+            OPContractsManager.Blueprints memory blueprint = getBlueprints();
+            OPContractsManager.Implementations memory implementation = getImplementations();
+
+            _output.permissionedDisputeGame = IPermissionedDisputeGame(
                 Blueprint.deployFrom(
                     blueprint.permissionedDisputeGame1,
                     blueprint.permissionedDisputeGame2,
@@ -1427,8 +1548,8 @@ contract OPContractsManagerDeployer is OPContractsManagerBase {
                             clockExtension: _input.disputeClockExtension,
                             maxClockDuration: _input.disputeMaxClockDuration,
                             vm: IBigStepper(implementation.mipsImpl),
-                            weth: IDelayedWETH(payable(address(output.delayedWETHPermissionedGameProxy))),
-                            anchorStateRegistry: IAnchorStateRegistry(address(output.anchorStateRegistryProxy)),
+                            weth: IDelayedWETH(payable(address(_output.delayedWETHPermissionedGameProxy))),
+                            anchorStateRegistry: IAnchorStateRegistry(address(_output.anchorStateRegistryProxy)),
                             l2ChainId: _input.l2ChainId
                         }),
                         _input.roles.proposer,
@@ -1437,6 +1558,133 @@ contract OPContractsManagerDeployer is OPContractsManagerBase {
                 )
             );
         }
+
+        return _output;
+    }
+
+    /// @notice Deploys a new OP Stack chain.
+    /// @param _input The deploy input parameters for the deployment.
+    /// @param _superchainConfig The superchain config for the chain.
+    /// @param _deployer The address to emit as the deployer address.
+    /// @return The deploy output values of the deployment.
+    function setAndInitializeProxyImplementations( // TODO: Consider the security implications of this separation
+        OPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        OPContractsManager.DeployOutput memory _output
+    )
+        external
+        virtual
+        returns (OPContractsManager.DeployOutput memory)
+    {
+        assertValidInputs(_input);
+        OPContractsManager.DeployOutput memory output = _output;
+        OPContractsManager.Blueprints memory blueprint = getBlueprints();
+        OPContractsManager.Implementations memory implementation = getImplementations();
+
+        // -------- Deploy Chain Singletons --------
+
+        // The AddressManager is used to store the implementation for the L1CrossDomainMessenger
+        // due to it's usage of the legacy ResolvedDelegateProxy.
+        // output.addressManager = IAddressManager(
+        //     Blueprint.deployFrom(
+        //         blueprint.addressManager,
+        //         computeSalt(_input.l2ChainId, _input.saltMixer, "AddressManager"),
+        //         abi.encode()
+        //     )
+        // );
+        // The ProxyAdmin is the owner of all proxies for the chain. We temporarily set the owner to
+        // this contract, and then transfer ownership to the specified owner at the end of deployment.
+        // output.opChainProxyAdmin = IProxyAdmin(
+        //     Blueprint.deployFrom(
+        //         blueprint.proxyAdmin,
+        //         computeSalt(_input.l2ChainId, _input.saltMixer, "ProxyAdmin"),
+        //         abi.encode(address(this))
+        //     )
+        // );
+        // Set the AddressManager on the ProxyAdmin.
+        // output.opChainProxyAdmin.setAddressManager(output.addressManager);
+        // Transfer ownership of the AddressManager to the ProxyAdmin.
+        // transferOwnership(address(output.addressManager), address(output.opChainProxyAdmin));
+
+        // -------- Deploy Proxy Contracts --------
+
+        // // Deploy ERC-1967 proxied contracts.
+        // output.l1ERC721BridgeProxy =
+        //     IL1ERC721Bridge(deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "L1ERC721Bridge"));
+        // output.optimismPortalProxy = IOptimismPortal(
+        //     payable(deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "OptimismPortal"))
+        // );
+        // output.ethLockboxProxy =
+        //     IETHLockbox(deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "ETHLockbox"));
+        // output.systemConfigProxy =
+        //     ISystemConfig(deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "SystemConfig"));
+        // output.optimismMintableERC20FactoryProxy = IOptimismMintableERC20Factory(
+        //     deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "OptimismMintableERC20Factory")
+        // );
+        // output.disputeGameFactoryProxy = IDisputeGameFactory(
+        //     deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "DisputeGameFactory")
+        // );
+        // output.anchorStateRegistryProxy = IAnchorStateRegistry(
+        //     deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "AnchorStateRegistry")
+        // );
+
+        // Deploy legacy proxied contracts.
+        // output.l1StandardBridgeProxy = IL1StandardBridge(
+        //     payable(
+        //         Blueprint.deployFrom(
+        //             blueprint.l1ChugSplashProxy,
+        //             computeSalt(_input.l2ChainId, _input.saltMixer, "L1StandardBridge"),
+        //             abi.encode(output.opChainProxyAdmin)
+        //         )
+        //     )
+        // );
+        // output.opChainProxyAdmin.setProxyType(address(output.l1StandardBridgeProxy), IProxyAdmin.ProxyType.CHUGSPLASH);
+        // string memory contractName = "OVM_L1CrossDomainMessenger";
+        // output.l1CrossDomainMessengerProxy = IL1CrossDomainMessenger(
+        //     Blueprint.deployFrom(
+        //         blueprint.resolvedDelegateProxy,
+        //         computeSalt(_input.l2ChainId, _input.saltMixer, "L1CrossDomainMessenger"),
+        //         abi.encode(output.addressManager, contractName)
+        //     )
+        // );
+        // output.opChainProxyAdmin.setProxyType(
+        //     address(output.l1CrossDomainMessengerProxy), IProxyAdmin.ProxyType.RESOLVED
+        // );
+        // output.opChainProxyAdmin.setImplementationName(address(output.l1CrossDomainMessengerProxy), contractName);
+
+        // Eventually we will switch from DelayedWETHPermissionedGameProxy to DelayedWETHPermissionlessGameProxy.
+        // output.delayedWETHPermissionedGameProxy = IDelayedWETH(
+        //     payable(
+        //         deployProxy(_input.l2ChainId, output.opChainProxyAdmin, _input.saltMixer, "DelayedWETHPermissionedGame")
+        //     )
+        // );
+
+        // if (!isDevFeatureEnabled(DevFeatures.DEPLOY_V2_DISPUTE_GAMES)) {
+        //     output.permissionedDisputeGame = IPermissionedDisputeGame(
+        //         Blueprint.deployFrom(
+        //             blueprint.permissionedDisputeGame1,
+        //             blueprint.permissionedDisputeGame2,
+        //             computeSalt(_input.l2ChainId, _input.saltMixer, "PermissionedDisputeGame"),
+        //             encodePermissionedFDGConstructor(
+        //                 IFaultDisputeGame.GameConstructorParams({
+        //                     gameType: GameTypes.PERMISSIONED_CANNON,
+        //                     absolutePrestate: _input.disputeAbsolutePrestate,
+        //                     maxGameDepth: _input.disputeMaxGameDepth,
+        //                     splitDepth: _input.disputeSplitDepth,
+        //                     clockExtension: _input.disputeClockExtension,
+        //                     maxClockDuration: _input.disputeMaxClockDuration,
+        //                     vm: IBigStepper(implementation.mipsImpl),
+        //                     weth: IDelayedWETH(payable(address(output.delayedWETHPermissionedGameProxy))),
+        //                     anchorStateRegistry: IAnchorStateRegistry(address(output.anchorStateRegistryProxy)),
+        //                     l2ChainId: _input.l2ChainId
+        //                 }),
+        //                 _input.roles.proposer,
+        //                 _input.roles.challenger
+        //             )
+        //         )
+        //     );
+        // }
 
         // -------- Set and Initialize Proxy Implementations --------
         bytes memory data;
@@ -2314,11 +2562,67 @@ contract OPContractsManager is ISemver {
         return opcmStandardValidator.validateWithOverrides(_input, _allowFailure, _overrides);
     }
 
-    /// @notice Deploys a new OP Stack chain.
-    /// @param _input The deploy input parameters for the deployment.
-    /// @return The deploy output values of the deployment.
-    function deploy(DeployInput calldata _input) external virtual returns (DeployOutput memory) {
-        return opcmDeployer.deploy(_input, superchainConfig, msg.sender);
+    // /// @notice Deploys a new OP Stack chain.
+    // /// @param _input The deploy input parameters for the deployment.
+    // /// @return The deploy output values of the deployment.
+    // function deploy(DeployInput calldata _input) external virtual returns (DeployOutput memory) {
+    //     return opcmDeployer.deploy(_input, superchainConfig, msg.sender);
+    // }
+
+    function deployAddressManager(DeployInput calldata _input, DeployOutput memory _output) external virtual returns (DeployOutput memory) {
+        return opcmDeployer.deployAddressManager(_input, superchainConfig, msg.sender, _output);
+    }
+
+    function deployProxyAdmin(DeployInput calldata _input, DeployOutput memory _output) external virtual returns (DeployOutput memory) {
+        return opcmDeployer.deployProxyAdmin(_input, superchainConfig, msg.sender, _output);
+    }
+
+    function deployL1ERC721Bridge(DeployInput calldata _input, DeployOutput memory _output) external virtual returns (DeployOutput memory) {
+        return opcmDeployer.deployL1ERC721Bridge(_input, superchainConfig, msg.sender, _output);
+    }
+
+    function deployOptimismPortal(DeployInput calldata _input, DeployOutput memory _output) external virtual returns (DeployOutput memory) {
+        return opcmDeployer.deployOptimismPortal(_input, superchainConfig, msg.sender, _output);
+    }
+
+    function deployETHLockbox(DeployInput calldata _input, DeployOutput memory _output) external virtual returns (DeployOutput memory) {
+        return opcmDeployer.deployETHLockbox(_input, superchainConfig, msg.sender, _output);
+    }
+
+    function deploySystemConfig(DeployInput calldata _input, DeployOutput memory _output) external virtual returns (DeployOutput memory) {
+        return opcmDeployer.deploySystemConfig(_input, superchainConfig, msg.sender, _output);
+    }
+
+    function deployOptimismMintableERC20Factory(DeployInput calldata _input, DeployOutput memory _output) external virtual returns (DeployOutput memory) {
+        return opcmDeployer.deployOptimismMintableERC20Factory(_input, superchainConfig, msg.sender, _output);
+    }
+
+    function deployDisputeGameFactory(DeployInput calldata _input, DeployOutput memory _output) external virtual returns (DeployOutput memory) {
+        return opcmDeployer.deployDisputeGameFactory(_input, superchainConfig, msg.sender, _output);
+    }
+
+    function deployAnchorStateRegistry(DeployInput calldata _input, DeployOutput memory _output) external virtual returns (DeployOutput memory) {
+        return opcmDeployer.deployAnchorStateRegistry(_input, superchainConfig, msg.sender, _output);
+    }
+
+    function deployL1StandardBridge(DeployInput calldata _input, DeployOutput memory _output) external virtual returns (DeployOutput memory) {
+        return opcmDeployer.deployL1StandardBridge(_input, superchainConfig, msg.sender, _output);
+    }
+
+    function deployL1CrossDomainMessenger(DeployInput calldata _input, DeployOutput memory _output) external virtual returns (DeployOutput memory) {
+        return opcmDeployer.deployL1CrossDomainMessenger(_input, superchainConfig, msg.sender, _output);
+    }
+
+    function deployDelayedWETHPermissionedGame(DeployInput calldata _input, DeployOutput memory _output) external virtual returns (DeployOutput memory) {
+        return opcmDeployer.deployDelayedWETHPermissionedGame(_input, superchainConfig, msg.sender, _output);
+    }
+
+    function deployPermissionedDisputeGame(DeployInput calldata _input, DeployOutput memory _output) external virtual returns (DeployOutput memory) {
+        return opcmDeployer.deployPermissionedDisputeGame(_input, superchainConfig, msg.sender, _output);
+    }
+
+    function setAndInitializeProxyImplementations(DeployInput calldata _input, DeployOutput memory _output) external virtual returns (DeployOutput memory) {
+        return opcmDeployer.setAndInitializeProxyImplementations(_input, superchainConfig, msg.sender, _output);
     }
 
     /// @notice Upgrades a set of chains to the latest implementation contracts
