@@ -257,7 +257,7 @@ func GPOParamsChange(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 	miner.ActEmptyBlock(t)
 	sequencer.ActL1HeadSignal(t)
 	sequencer.ActBuildToL1Head(t)
-	basefee := miner.L1Chain().CurrentBlock().BaseFee
+	basefee := miner.L1Chain().CurrentBlock().BaseFee()
 
 	// alice makes a L2 tx, sequencer includes it
 	alice.ActResetTxOpts(t)
@@ -302,7 +302,7 @@ func GPOParamsChange(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 	miner.ActL1StartBlock(12)(t)
 	miner.ActL1IncludeTx(dp.Addresses.Deployer)(t)
 	miner.ActL1EndBlock(t)
-	basefeeGPOUpdate := miner.L1Chain().CurrentBlock().BaseFee
+	basefeeGPOUpdate := miner.L1Chain().CurrentBlock().BaseFee()
 
 	// build empty L2 chain, up to but excluding the L2 block with the L1 origin that processes the GPO change
 	sequencer.ActL1HeadSignal(t)
@@ -339,7 +339,7 @@ func GPOParamsChange(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 
 	// build more L2 blocks, with new L1 origin
 	miner.ActEmptyBlock(t)
-	basefee = miner.L1Chain().CurrentBlock().BaseFee
+	basefee = miner.L1Chain().CurrentBlock().BaseFee()
 	sequencer.ActL1HeadSignal(t)
 	sequencer.ActBuildToL1Head(t)
 	// and Alice makes a tx again

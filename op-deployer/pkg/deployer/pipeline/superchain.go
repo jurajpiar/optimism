@@ -13,10 +13,10 @@ import (
 func DeploySuperchain(env *Env, intent *state.Intent, st *state.State) error {
 	lgr := env.Logger.New("stage", "deploy-superchain")
 
-	if !shouldDeploySuperchain(intent, st) {
-		lgr.Info("superchain deployment not needed")
-		return nil
-	}
+	// if !shouldDeploySuperchain(intent, st) {
+	// 	lgr.Info("superchain deployment not needed")
+	// 	return nil
+	// }
 
 	lgr.Info("deploying superchain")
 

@@ -16,10 +16,10 @@ import (
 func DeployImplementations(env *Env, intent *state.Intent, st *state.State) error {
 	lgr := env.Logger.New("stage", "deploy-implementations")
 
-	if !shouldDeployImplementations(intent, st) {
-		lgr.Info("implementations deployment not needed")
-		return nil
-	}
+	// if !shouldDeployImplementations(intent, st) {
+	// 	lgr.Info("implementations deployment not needed")
+	// 	return nil
+	// }
 
 	lgr.Info("deploying implementations")
 

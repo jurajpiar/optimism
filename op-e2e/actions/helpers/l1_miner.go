@@ -92,7 +92,7 @@ func (s *L1Miner) ActL1StartBlock(timeDelta uint64) Action {
 		}
 
 		if s.l1Cfg.Config.IsLondon(header.Number) {
-			header.BaseFee = eip1559.CalcBaseFee(s.l1Cfg.Config, parent, header.Time)
+			header.EthBaseFee = eip1559.CalcBaseFee(s.l1Cfg.Config, parent, header.Time)
 			// At the transition, double the gas limit so the gas target is equal to the old gas limit.
 			if !s.l1Cfg.Config.IsLondon(parent.Number) {
 				header.GasLimit = parent.GasLimit * s.l1Cfg.Config.ElasticityMultiplier()

@@ -227,7 +227,7 @@ func testFees(t *testing.T, cfg e2esys.SystemConfig) {
 	require.Equal(t, l2Fee, sequencerFeeVaultDiff)
 
 	// Tally BaseFee
-	baseFee := new(big.Int).Mul(header.BaseFee, gasUsed)
+	baseFee := new(big.Int).Mul(header.BaseFee(), gasUsed)
 	require.Equal(t, baseFee, baseFeeRecipientDiff, "base fee mismatch")
 
 	// Tally L1 Fee
@@ -285,7 +285,7 @@ func testFees(t *testing.T, cfg e2esys.SystemConfig) {
 	if !sys.RollupConfig.IsEcotone(header.Time) { // FeeScalar receipt attribute is removed as of Ecotone
 		require.Equal(t,
 			new(big.Float).Mul(
-				new(big.Float).SetInt(l1Header.BaseFee),
+				new(big.Float).SetInt(l1Header.BaseFee()),
 				new(big.Float).Mul(new(big.Float).SetInt(receipt.L1GasUsed), receipt.FeeScalar),
 			),
 			new(big.Float).SetInt(receipt.L1Fee), "fee field in receipt matches gas used times scalar times base fee")

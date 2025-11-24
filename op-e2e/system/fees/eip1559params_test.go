@@ -92,12 +92,12 @@ func TestEIP1559Params(t *testing.T) {
 	require.Equal(t, eip1559.EncodeHoloceneExtraData(uint64(expectedDenom), uint64(expectedElasticity)), h.Extra)
 
 	// confirm the next base fee will be as expected with the new 1559 parameters
-	delta := ((gasTarget - int64(h.GasUsed)) * h.BaseFee.Int64() / gasTarget / int64(expectedDenom))
-	expectedNextFee := h.BaseFee.Int64() - delta
+	delta := ((gasTarget - int64(h.GasUsed)) * h.BaseFee().Int64() / gasTarget / int64(expectedDenom))
+	expectedNextFee := h.BaseFee().Int64() - delta
 
 	b, err := geth.WaitForBlock(big.NewInt(h.Number.Int64()+1), l2Seq)
 	require.NoError(t, err, "waiting for next L2 block")
-	require.Equal(t, expectedNextFee, b.Header().BaseFee.Int64())
+	require.Equal(t, expectedNextFee, b.Header().BaseFee().Int64())
 
 	// confirm the extraData is still being set as expected
 	require.Equal(t, eip1559.EncodeHoloceneExtraData(uint64(expectedDenom), uint64(expectedElasticity)), b.Header().Extra)
