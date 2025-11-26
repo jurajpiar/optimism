@@ -9,6 +9,8 @@ import (
 // If the chain ID is not known, it returns nil.
 func L1ChainConfigByChainID(chainID ChainID) *params.ChainConfig {
 	switch chainID {
+	case ChainIDFromBig(params.RootstockTestnetChainConfig.ChainID):
+		return params.RootstockTestnetChainConfig
 	case ChainIDFromBig(params.MainnetChainConfig.ChainID):
 		return params.MainnetChainConfig
 	case ChainIDFromBig(params.SepoliaChainConfig.ChainID):

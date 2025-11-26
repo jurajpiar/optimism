@@ -474,6 +474,8 @@ func initRuntimeConfig(ctx context.Context, cfg *config.Config, node *OpNode) er
 }
 
 func initL1BeaconAPI(ctx context.Context, cfg *config.Config, node *OpNode) (*sources.L1BeaconClient, error) {
+	return nil, nil
+
 	// If Ecotone upgrade is not scheduled yet, then there is no need for a Beacon API.
 	if cfg.Rollup.EcotoneTime == nil {
 		return nil, nil

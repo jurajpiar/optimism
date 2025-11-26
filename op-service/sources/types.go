@@ -84,6 +84,7 @@ func (hdr *RPCHeader) checkPostMerge() error {
 		return fmt.Errorf("post-merge block header requires zeroed difficulty field, but got: %s", &hdr.Difficulty)
 	}
 	if hdr.Nonce != (types.BlockNonce{}) {
+		fmt.Println("types.BlockNonce():", types.BlockNonce{})
 		return fmt.Errorf("post-merge block header requires zeroed block nonce field, but got: %s", hdr.Nonce)
 	}
 	if hdr.BaseFee() == nil {
