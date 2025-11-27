@@ -824,7 +824,7 @@ func checkL1Fees(ctx context.Context, env *actionEnv) error {
 		return fmt.Errorf("failed to retrieve L1 origin %s of L2 block %s: %w", headRef.L1Origin, headRef, err)
 	}
 	if receipt.L1GasPrice.Cmp(l1Header.BaseFee()) != 0 {
-		return fmt.Errorf("L1 gas price does not include blob fee component: %d != %d", receipt.L1GasPrice, l1Header.BaseFee)
+		return fmt.Errorf("L1 gas price does not include blob fee component: %d != %d", receipt.L1GasPrice, l1Header.BaseFee())
 	}
 	rawTx, err := tx.MarshalBinary()
 	if err != nil {
