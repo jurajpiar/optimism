@@ -85,7 +85,6 @@ func NewBlockProcessorFromHeader(provider BlockDataProvider, h *types.Header) (*
 	}
 	header.Number = new(big.Int).Add(parentHeader.Number, common.Big1)
 	header.EthBaseFee = eip1559.CalcBaseFee(provider.Config(), parentHeader, header.Time)
-	header.RskMinimumGasPrice = header.EthBaseFee
 	header.GasUsed = 0
 	gasPool := new(core.GasPool).AddGas(header.GasLimit)
 	mkEVM := func() *vm.EVM {

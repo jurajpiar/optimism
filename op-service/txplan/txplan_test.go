@@ -19,7 +19,7 @@ func TestPlannedTx_Defaults(t *testing.T) {
 	ptx := NewPlannedTx(WithPrivateKey(key), WithValue(eth.WeiU64(123)))
 	t.Log("tx", ptx.Signed.String())
 
-	block := types.NewBlock(&types.Header{EthBaseFee: big.NewInt(7e9), RskMinimumGasPrice: big.NewInt(7e9)}, nil, nil, nil, types.DefaultBlockConfig)
+	block := types.NewBlock(&types.Header{EthBaseFee: big.NewInt(7e9)}, nil, nil, nil, types.DefaultBlockConfig)
 	blockInfo := eth.BlockToInfo(block)
 	ptx.AgainstBlock.Set(blockInfo)
 

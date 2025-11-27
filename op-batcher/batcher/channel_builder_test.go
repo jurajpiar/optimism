@@ -105,11 +105,10 @@ func newMiniL2BlockWithChainIDNumberParentAndL1Information(numTx int, chainID *b
 	}
 
 	l1Block := types.NewBlock(&types.Header{
-		EthBaseFee:         big.NewInt(10),
-		RskMinimumGasPrice: big.NewInt(10),
-		Difficulty:         common.Big0,
-		Number:             big.NewInt(l1Number),
-		Time:               blockTime,
+		EthBaseFee: big.NewInt(10),
+		Difficulty: common.Big0,
+		Number:     big.NewInt(l1Number),
+		Time:       blockTime,
 	}, nil, nil, trie.NewStackTrie(nil), types.DefaultBlockConfig)
 	l1InfoTx, err := derive.L1InfoDeposit(rollupConfig, params.MergedTestChainConfig, eth.SystemConfig{}, 0, eth.BlockToInfo(l1Block), blockTime)
 	if err != nil {
