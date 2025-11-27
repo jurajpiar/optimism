@@ -186,9 +186,6 @@ type forgeScriptBackendImpl struct {
 
 // Call sends a transaction to a contract
 func (b *forgeScriptBackendImpl) Call(to common.Address, input []byte) (result []byte, err error) {
-	fmt.Println("deploy.go ~ forgeScriptBackendImpl ~ Call ~ Call", to, input)
-	fmt.Println("deploy.go ~ forgeScriptBackendImpl ~ Call ~ tx context", b.host.env.TxContext())
-	fmt.Println("deploy.go ~ forgeScriptBackendImpl ~ Call ~ block context", b.host.env.Context())
 	result, _, err = b.host.Call(b.host.env.TxContext().Origin, to, input, DefaultFoundryGasLimit, uint256.NewInt(0))
 	if err != nil {
 		return nil, fmt.Errorf("failed to call backend: %w", err)
@@ -202,19 +199,12 @@ func (b *forgeScriptBackendImpl) Call(to common.Address, input []byte) (result [
 // It will name the contract using the provided label and save the contract source maps
 // for ease of debugging
 func (b *forgeScriptBackendImpl) Deploy(artifact *foundry.Artifact, label string) (address common.Address, err error) {
-	fmt.Println("deploy.go ~ forgeScriptBackendImpl ~ Deploy ~ Deploying script", label)
-	fmt.Println("deploy.go ~ forgeScriptBackendImpl ~ Deploy ~ Label", label)
-	fmt.Println("deploy.go ~ forgeScriptBackendImpl ~ Deploy ~ State", b.host.state)
 	deployer := addresses.ScriptDeployer
-	fmt.Println("deploy.go ~ forgeScriptBackendImpl ~ Deploy ~ Deployer", deployer)
 	deployNonce := b.host.state.GetNonce(deployer)
-	fmt.Println("deploy.go ~ forgeScriptBackendImpl ~ Deploy ~ DeployNonce", deployNonce)
 	// Compute address of script contract to be deployed
 	address = crypto.CreateAddress(deployer, deployNonce)
-	fmt.Println("deploy.go ~ forgeScriptBackendImpl ~ Deploy ~ Address", address)
 	// Label the address using the contract name
 	b.host.Label(address, label)
-	fmt.Println("deploy.go ~ forgeScriptBackendImpl ~ Deploy ~ Labeled address", address)
 	b.host.AllowCheatcodes(address)    // before constructor execution, give our script cheatcode access
 	b.host.state.MakeExcluded(address) // scripts are persistent across forks
 
@@ -223,21 +213,17 @@ func (b *forgeScriptBackendImpl) Deploy(artifact *foundry.Artifact, label string
 	defer b.host.EnforceMaxCodeSize(true)
 
 	// deploy the script
-	fmt.Println("deploy.go ~ forgeScriptBackendImpl ~ Deploy ~ Deploying script", label)
 	deployedAddr, err := b.host.Create(deployer, artifact.Bytecode.Object)
 	if err != nil {
 		return address, fmt.Errorf("failed to deploy script %s: %w", label, err)
 	}
-	fmt.Println("deploy.go ~ forgeScriptBackendImpl ~ Deploy ~ Deployed address", deployedAddr)
 
 	// make sure we deployed to the expected address
 	if deployedAddr != address {
 		return address, fmt.Errorf("deployed script %s to unexpected address %s, expected %s", label, deployedAddr, address)
 	}
-	fmt.Println("deploy.go ~ forgeScriptBackendImpl ~ Deploy ~ Saved contract source map", address)
 	// save the contract source map
 	b.host.RememberArtifact(address, artifact, label)
-	fmt.Println("deploy.go ~ forgeScriptBackendImpl ~ Deploy ~ Remembering artifact", address, label)
 	// and return the script address
 	return address, nil
 }
@@ -256,9 +242,6 @@ type forgeScriptImpl struct {
 
 // Call deploys the script contract, sends transaction payload and destroys the contract
 func (s *forgeScriptImpl) Call(input []byte) (output []byte, err error) {
-	fmt.Println("deploy.go ~ forgeScriptImpl ~ Call ~ Deploying script", s.name)
-	fmt.Println("deploy.go ~ forgeScriptImpl ~ Call ~ Backend", &s.backend)
-	fmt.Println("deploy.go ~ forgeScriptImpl ~ Call ~ Input", string(input))
 	address, err := s.backend.Deploy(s.artifact, s.name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy script %s: %w", s.name, err)
@@ -266,7 +249,6 @@ func (s *forgeScriptImpl) Call(input []byte) (output []byte, err error) {
 
 	defer s.backend.Destroy(address)
 
-	fmt.Println("deploy.go ~ forgeScriptImpl ~ Call ~ Calling script", address, input)
 	output, err = s.backend.Call(address, input)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call script %s using data 0x%s: %w", s.name, common.Bytes2Hex(input), err)
@@ -296,7 +278,6 @@ func (d *deployScriptWithoutOutputImpl[I]) ABI() abi.ABI {
 
 // Call implements ForgeScript.
 func (d *deployScriptWithoutOutputImpl[I]) Call(input []byte) (result []byte, err error) {
-	fmt.Println("deploy.go ~ deployScriptWithoutOutputImpl ~ Call ~ Calling script", d.script.Name())
 	return d.script.Call(input)
 }
 
@@ -313,13 +294,11 @@ func (d *deployScriptWithoutOutputImpl[I]) run(input I) (result []byte, err erro
 	scriptName := d.Name()
 	methodName := d.method.RawName
 
-	fmt.Println("deploy.go ~ deployScriptWithoutOutputImpl ~ run ~ Packing input", methodName, input)
 	packed, err := d.ABI().Pack(methodName, input)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode input for %s method of script %s using:\n\n%v\n\n: %w", methodName, scriptName, input, err)
 	}
 
-	fmt.Println("deploy.go ~ deployScriptWithoutOutputImpl ~ run ~ Calling", packed[:10])
 	result, err = d.Call(packed)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run %s method of script %s using:\n\n%v\n\n: %w", methodName, scriptName, input, err)
@@ -330,7 +309,6 @@ func (d *deployScriptWithoutOutputImpl[I]) run(input I) (result []byte, err erro
 
 // Run implements DeployScriptWithoutOutput[I].
 func (d *deployScriptWithoutOutputImpl[I]) Run(input I) (err error) {
-	fmt.Println("deploy.go ~ deployScriptWithoutOutputImpl ~ Run ~ Running script", d.Name())
 	_, err = d.run(input)
 
 	return err
@@ -350,7 +328,6 @@ func (d *deployScriptWithOutputImpl[I, O]) Run(input I) (output O, err error) {
 	scriptName := d.Name()
 	methodName := d.method.RawName
 
-	fmt.Println("Running script", scriptName, methodName)
 	// We use the run to get the raw output of the contract call
 	result, err := d.deployScriptWithoutOutputImpl.run(input)
 	if err != nil {
@@ -358,13 +335,11 @@ func (d *deployScriptWithOutputImpl[I, O]) Run(input I) (output O, err error) {
 	}
 
 	// We then decode the raw output to an anonymous struct
-	fmt.Println("deploy.go ~ deployScriptWithOutputImpl ~ Run ~ Unpacking output", methodName, result)
 	unpacked, err := d.ABI().Unpack(methodName, result)
 	if err != nil {
 		return output, fmt.Errorf("failed to decode output for %s method of script %s using data 0x%s: %w", methodName, scriptName, common.Bytes2Hex(result), err)
 	}
 
 	// And finally we convert the anonymous struct into our typed output
-	fmt.Println("deploy.go ~ deployScriptWithOutputImpl ~ Run ~ Converting output", unpacked[0])
 	return *abi.ConvertType(unpacked[0], new(O)).(*O), nil
 }

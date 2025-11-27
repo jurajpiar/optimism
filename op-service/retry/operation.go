@@ -42,18 +42,12 @@ func Do[T any](ctx context.Context, maxAttempts int, strategy Strategy, op func(
 	var empty, ret T
 	f := func() (err error) {
 		ret, err = op()
-		fmt.Println("operation.go ~ Do ~ Operation", ret)
-		if err != nil {
-			fmt.Println("operation.go ~ Do ~ Error", err.Error())
-		}
 		return
 	}
 	err := Do0(ctx, maxAttempts, strategy, f)
 	if err != nil {
-		fmt.Println("operation.go ~ Do ~ Do0 returned error", err.Error())
 		return empty, err
 	}
-	fmt.Println("operation.go ~ Do ~ Return", ret)
 	return ret, err
 }
 
@@ -67,7 +61,6 @@ func Do0(ctx context.Context, maxAttempts int, strategy Strategy, op func() erro
 	t := time.NewTimer(0)
 	defer t.Stop()
 	for i := 0; i < maxAttempts; i++ {
-		fmt.Println("operation.go ~ Do ~ Attempt", i)
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
@@ -78,13 +71,10 @@ func Do0(ctx context.Context, maxAttempts int, strategy Strategy, op func() erro
 		// Don't block when we are about to exit the loop & return ErrFailedPermanently
 		if i != maxAttempts-1 {
 			t.Reset(strategy.Duration(i))
-			fmt.Println("operation.go ~ Do ~ Resetting timer", strategy.Duration(i))
 			select {
 			case <-ctx.Done():
-				fmt.Println("operation.go ~ Do ~ Context done")
 				return ctx.Err()
 			case <-t.C:
-				fmt.Println("operation.go ~ Do ~ Timer expired")
 			}
 		}
 	}

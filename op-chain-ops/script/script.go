@@ -342,14 +342,9 @@ func (h *Host) EnableCheats() error {
 
 // prelude is a helper function to prepare the Host for a new call/create on the EVM environment.
 func (h *Host) prelude(from common.Address, to *common.Address) {
-	fmt.Println("script.go ~ Host ~ prelude ~ Preparing for call/create", from, to)
 	evmC := h.env.Context()
-	fmt.Println("script.go ~ Host ~ prelude ~ EVM context", evmC)
 	rules := h.chainCfg.Rules(evmC.BlockNumber, true, evmC.Time)
-	fmt.Println("script.go ~ Host ~ prelude ~ Rules", rules)
 	activePrecompiles := vm.ActivePrecompiles(rules)
-	fmt.Println("script.go ~ Host ~ prelude ~ Active precompiles", activePrecompiles)
-	fmt.Println("script.go ~ Host ~ prelude ~ Chain config rules", h.env.ChainConfig().Rules(evmC.BlockNumber, true, evmC.Time))
 	h.env.StateDB().Prepare(rules, from, evmC.Coinbase, to, activePrecompiles, nil)
 }
 
@@ -361,10 +356,7 @@ func (h *Host) Call(from common.Address, to common.Address, input []byte, gas ui
 		if r := recover(); r != nil {
 			// Cast to a string to check the error message. If it's not a string it's
 			// an unexpected panic and we should re-raise it.
-			fmt.Println("script.go ~ Host ~ Call ~ Panic", r)
 			rStr, ok := r.(string)
-			fmt.Println("script.go ~ Host ~ Call ~ Panic", rStr)
-			fmt.Println("script.go ~ Host ~ Call ~ Panic ok", ok)
 			if !ok || !strings.Contains(strings.ToLower(rStr), "revision id 1") {
 				fmt.Println("panic", rStr)
 				panic(r)
@@ -380,29 +372,7 @@ func (h *Host) Call(from common.Address, to common.Address, input []byte, gas ui
 		h.evmRevertErr = nil
 	}()
 
-	inputLen := len(input)
-	if inputLen > 0 {
-		if inputLen >= 10 {
-			fmt.Println("script.go ~ Host ~ Call ~ Input", input[:10])
-		} else {
-			fmt.Println("script.go ~ Host ~ Call ~ Input", input)
-		}
-	} else {
-		fmt.Println("script.go ~ Host ~ Call ~ Input is empty")
-	}
-	fmt.Println("script.go ~ Host ~ Call ~ Calling contract", from, to, gas, value)
 	returnData, leftOverGas, err = h.env.Call(from, to, input, gas, value)
-	if len(returnData) > 0 {
-		if len(returnData) >= 10 {
-			fmt.Println("script.go ~ Host ~ Call ~ Returned data", returnData[:10])
-		} else {
-			fmt.Println("script.go ~ Host ~ Call ~ Returned data", returnData)
-		}
-	} else {
-		fmt.Println("script.go ~ Host ~ Call ~ Returned data is empty")
-	}
-	fmt.Println("script.go ~ Host ~ Call ~ Left over gas", leftOverGas)
-	fmt.Println("script.go ~ Host ~ Call ~ Error", err)
 
 	// replace the returned error with the inner EVM error (if one exists)
 	// h.evmRevertErr will contain expected reverts (e.g. those from proxies)
@@ -450,14 +420,7 @@ func (h *Host) RememberArtifact(addr common.Address, artifact *foundry.Artifact,
 // Create a contract with unlimited gas, and 0 ETH value.
 // This create function helps deploy contracts quickly for scripting etc.
 func (h *Host) Create(from common.Address, initCode []byte) (common.Address, error) {
-	if len(initCode) > 0 {
-		fmt.Println("script.go ~ Host ~ Create ~ Init code", initCode[:10])
-	} else {
-		fmt.Println("script.go ~ Host ~ Create ~ Init code is empty")
-	}
 	h.prelude(from, nil)
-	fmt.Println("script.go ~ Host ~ Create ~ Creating contract with gas limit", DefaultFoundryGasLimit)
-	fmt.Println("script.go ~ Host ~ Create ~ Creating contract with value", uint256.NewInt(0))
 	ret, addr, _, err := h.env.Create(from,
 		initCode, DefaultFoundryGasLimit, uint256.NewInt(0))
 	if err != nil {
@@ -467,7 +430,6 @@ func (h *Host) Create(from common.Address, initCode []byte) (common.Address, err
 		}
 		return common.Address{}, fmt.Errorf("failed to create contract, return: %s, err: %w", retStr, err)
 	}
-	fmt.Println("script.go ~ Host ~ Create ~ Created contract", addr)
 	return addr, nil
 }
 

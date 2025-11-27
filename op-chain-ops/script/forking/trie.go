@@ -70,7 +70,6 @@ func (f *ForkedAccountsTrie) ContractCode(addr common.Address, codeHash common.H
 		}
 		// if not in codeDiff, the actual code has not changed.
 	}
-	fmt.Println("trie.go ~ ForkedAccountsTrie ~ ContractCode ~ Retrieving code from source", addr, codeHash)
 	code, err := f.src.Code(addr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve code: %w", err)
@@ -104,11 +103,9 @@ func (f *ForkedAccountsTrie) GetAccount(address common.Address) (*types.StateAcc
 		CodeHash: nil,
 	}
 	diffAcc := f.diff.Account[address]
-	fmt.Println("trie.go ~ ForkedAccountsTrie ~ GetAccount ~ Diff account", diffAcc)
 	if diffAcc != nil && diffAcc.Nonce != nil {
 		acc.Nonce = *diffAcc.Nonce
 	} else {
-		fmt.Println("trie.go ~ ForkedAccountsTrie ~ GetAccount ~ Retrieving nonce from source", address)
 		v, err := f.src.Nonce(address)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve nonce of account %s: %w", address, err)
@@ -118,7 +115,6 @@ func (f *ForkedAccountsTrie) GetAccount(address common.Address) (*types.StateAcc
 	if diffAcc != nil && diffAcc.Balance != nil {
 		acc.Balance = new(uint256.Int).Set(diffAcc.Balance)
 	} else {
-		fmt.Println("trie.go ~ ForkedAccountsTrie ~ GetAccount ~ Retrieving balance from source", address)
 		v, err := f.src.Balance(address)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve balance of account %s: %w", address, err)
@@ -129,7 +125,6 @@ func (f *ForkedAccountsTrie) GetAccount(address common.Address) (*types.StateAcc
 		cpy := *diffAcc.CodeHash
 		acc.CodeHash = cpy.Bytes()
 	} else {
-		fmt.Println("trie.go ~ ForkedAccountsTrie ~ GetAccount ~ Retrieving code from source", address)
 		v, err := f.src.Code(address)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve code of account %s: %w", address, err)

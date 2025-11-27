@@ -300,10 +300,10 @@ func applyOverrides(ctx cliiface.Context, rollupConfig *rollup.Config) {
 }
 
 func NewL1ChainConfig(chainId *big.Int, ctx cliiface.Context, log log.Logger) (*params.ChainConfig, error) {
-	log.Info("NewL1ChainConfig", "chainId", chainId)
 	if chainId == nil {
 		panic("l1 chain id is nil")
 	}
+	log.Info("op-node ~ service.go ~ NewL1ChainConfig ~ chainId", chainId)
 
 	if cfg := eth.L1ChainConfigByChainID(eth.ChainIDFromBig(chainId)); cfg != nil {
 		return cfg, nil

@@ -99,9 +99,7 @@ func (r *RPCSource) Nonce(addr common.Address) (uint64, error) {
 		ctx, cancel := context.WithTimeout(r.ctx, r.timeout)
 		defer cancel()
 		var result hexutil.Uint64
-		fmt.Println("rpc.go ~ RPCSource ~ Nonce ~ Calling eth_getTransactionCount", addr, "latest")
 		err := r.client.CallContext(ctx, &result, "eth_getTransactionCount", addr, "latest")
-		fmt.Println("rpc.go ~ RPCSource ~ Nonce ~ Result", result, err)
 		return uint64(result), err
 	})
 }
