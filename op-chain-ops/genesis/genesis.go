@@ -109,7 +109,7 @@ func NewL2Genesis(config *DeployConfig, l1StartHeader *eth.BlockRef) (*core.Gene
 		Number:     uint64(config.L2GenesisBlockNumber),
 		GasUsed:    uint64(config.L2GenesisBlockGasUsed),
 		ParentHash: config.L2GenesisBlockParentHash,
-		BaseFee:    baseFee.ToInt(),
+		EthBaseFee: baseFee.ToInt(),
 		Alloc:      map[common.Address]types.Account{},
 	}
 
@@ -257,7 +257,7 @@ func NewL1GenesisMinimal(config *DevL1DeployConfigMinimal) (*core.Genesis, error
 		Number:        uint64(config.L1GenesisBlockNumber),
 		GasUsed:       uint64(config.L1GenesisBlockGasUsed),
 		ParentHash:    config.L1GenesisBlockParentHash,
-		BaseFee:       baseFee.ToInt(),
+		EthBaseFee:    baseFee.ToInt(),
 		ExcessBlobGas: (*uint64)(config.L1GenesisBlockExcessBlobGas),
 		BlobGasUsed:   (*uint64)(config.L1GenesisBlockBlobGasUsed),
 	}, nil
