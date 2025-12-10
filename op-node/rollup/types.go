@@ -374,20 +374,21 @@ func (cfg *Config) HasOptimismWithdrawalsRoot(timestamp uint64) bool {
 // - its L1 in Holesky or Sepolia, and
 // - its genesis is before the L1's Prague activation.
 func (cfg *Config) ProbablyMissingPectraBlobSchedule() bool {
+	return false
 	if cfg.PectraBlobScheduleTime != nil {
 		return false
 	}
 
 	var pragueTime uint64
-	if cfg.L1ChainID.Cmp(params.HoleskyChainConfig.ChainID) == 0 {
-		pragueTime = *params.HoleskyChainConfig.PragueTime
-	} else if cfg.L1ChainID.Cmp(params.SepoliaChainConfig.ChainID) == 0 {
-		pragueTime = *params.SepoliaChainConfig.PragueTime
-	} else {
-		// Only Holesky and Sepolia chains may have run into the
-		// Pectra blob schedule bug.
-		return false
-	}
+	// if cfg.L1ChainID.Cmp(params.HoleskyChainConfig.ChainID) == 0 {
+	// 	pragueTime = *params.HoleskyChainConfig.PragueTime
+	// } else if cfg.L1ChainID.Cmp(params.SepoliaChainConfig.ChainID) == 0 {
+	// 	pragueTime = *params.SepoliaChainConfig.PragueTime
+	// } else {
+	// 	// Only Holesky and Sepolia chains may have run into the
+	// 	// Pectra blob schedule bug.
+	// 	return false
+	// }
 
 	// Only chains whose genesis was before the L1's prague activation need
 	// the Pectra blob schedule fix.
@@ -756,7 +757,8 @@ func (c *Config) Description(l2Chains map[string]string) string {
 	if networkL2 == "" {
 		networkL2 = "unknown L2"
 	}
-	networkL1 := params.NetworkNames[c.L1ChainID.String()]
+	// networkL1 := params.NetworkNames[c.L1ChainID.String()]
+	networkL1 := "rootstock-testnet" // TODO: add rootstock mainnet and testnet network names
 	if networkL1 == "" {
 		networkL1 = "unknown L1"
 	}
@@ -792,7 +794,9 @@ func (c *Config) LogDescription(log log.Logger, l2Chains map[string]string) {
 	if networkL2 == "" {
 		networkL2 = "unknown L2"
 	}
-	networkL1 := params.NetworkNames[c.L1ChainID.String()]
+	// networkL1 := params.NetworkNames[c.L1ChainID.String()]
+
+	networkL1 := "rootstock-testnet" // TODO: add rootstock mainnet and testnet network names
 	if networkL1 == "" {
 		networkL1 = "unknown L1"
 	}
