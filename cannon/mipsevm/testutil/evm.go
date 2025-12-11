@@ -166,7 +166,7 @@ func (d *testChain) GetHeader(h common.Hash, n uint64) *types.Header {
 		Extra:           nil,
 		MixDigest:       common.Hash{},
 		Nonce:           types.BlockNonce{},
-		EthBaseFee:      big.NewInt(7),
+		BaseFee:         big.NewInt(7),
 		WithdrawalsHash: &types.EmptyWithdrawalsHash,
 	}
 }

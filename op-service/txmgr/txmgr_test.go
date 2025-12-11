@@ -269,8 +269,8 @@ func (b *mockBackend) HeaderByNumber(ctx context.Context, number *big.Int) (*typ
 		num.Set(number)
 	}
 	return &types.Header{
-		Number:     num,
-		EthBaseFee: b.g.baseFee(),
+		Number:  num,
+		BaseFee: b.g.baseFee(),
 	}, nil
 }
 
@@ -1050,8 +1050,8 @@ func (b *failingBackend) HeaderByNumber(ctx context.Context, _ *big.Int) (*types
 	}
 
 	return &types.Header{
-		Number:     big.NewInt(1),
-		EthBaseFee: b.baseFee,
+		Number:  big.NewInt(1),
+		BaseFee: b.baseFee,
 	}, nil
 }
 

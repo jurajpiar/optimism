@@ -70,7 +70,7 @@ func TestDropSpanBatchBeforeHardfork(gt *testing.T) {
 		ChainID:   sd.L2Cfg.Config.ChainID,
 		Nonce:     n,
 		GasTipCap: big.NewInt(2 * params.GWei),
-		GasFeeCap: new(big.Int).Add(miner.L1Chain().CurrentBlock().BaseFee(), big.NewInt(2*params.GWei)),
+		GasFeeCap: new(big.Int).Add(miner.L1Chain().CurrentBlock().BaseFee, big.NewInt(2*params.GWei)),
 		Gas:       params.TxGas,
 		To:        &dp.Addresses.Bob,
 		Value:     e2eutils.Ether(2),
@@ -169,7 +169,7 @@ func TestHardforkMiddleOfSpanBatch(gt *testing.T) {
 		ChainID:   sd.L2Cfg.Config.ChainID,
 		Nonce:     n,
 		GasTipCap: big.NewInt(2 * params.GWei),
-		GasFeeCap: new(big.Int).Add(miner.L1Chain().CurrentBlock().BaseFee(), big.NewInt(2*params.GWei)),
+		GasFeeCap: new(big.Int).Add(miner.L1Chain().CurrentBlock().BaseFee, big.NewInt(2*params.GWei)),
 		Gas:       params.TxGas,
 		To:        &dp.Addresses.Bob,
 		Value:     e2eutils.Ether(2),
@@ -277,7 +277,7 @@ func TestAcceptSingularBatchAfterHardfork(gt *testing.T) {
 		ChainID:   sd.L2Cfg.Config.ChainID,
 		Nonce:     n,
 		GasTipCap: big.NewInt(2 * params.GWei),
-		GasFeeCap: new(big.Int).Add(miner.L1Chain().CurrentBlock().BaseFee(), big.NewInt(2*params.GWei)),
+		GasFeeCap: new(big.Int).Add(miner.L1Chain().CurrentBlock().BaseFee, big.NewInt(2*params.GWei)),
 		Gas:       params.TxGas,
 		To:        &dp.Addresses.Bob,
 		Value:     e2eutils.Ether(2),
@@ -361,7 +361,7 @@ func TestMixOfBatchesAfterHardfork(gt *testing.T) {
 			ChainID:   sd.L2Cfg.Config.ChainID,
 			Nonce:     n,
 			GasTipCap: big.NewInt(2 * params.GWei),
-			GasFeeCap: new(big.Int).Add(miner.L1Chain().CurrentBlock().BaseFee(), big.NewInt(2*params.GWei)),
+			GasFeeCap: new(big.Int).Add(miner.L1Chain().CurrentBlock().BaseFee, big.NewInt(2*params.GWei)),
 			Gas:       params.TxGas,
 			To:        &dp.Addresses.Bob,
 			Value:     e2eutils.Ether(2),
@@ -543,7 +543,7 @@ func TestSpanBatchLowThroughputChain(gt *testing.T) {
 				require.NoError(t, err)
 				gas, err := core.IntrinsicGas(data, nil, nil, false, true, true, false)
 				require.NoError(t, err)
-				baseFee := seqEngine.L2Chain().CurrentBlock().BaseFee()
+				baseFee := seqEngine.L2Chain().CurrentBlock().BaseFee
 				nonce, err := cl.PendingNonceAt(t.Ctx(), addrs[userIdx])
 				require.NoError(t, err)
 				tx := types.MustSignNewTx(privKeys[userIdx], signer, &types.DynamicFeeTx{
@@ -683,7 +683,7 @@ func TestBatchEquivalence(gt *testing.T) {
 			require.NoError(t, err)
 			gas, err := core.IntrinsicGas(data, nil, nil, false, true, true, false)
 			require.NoError(t, err)
-			baseFee := seqEngine.L2Chain().CurrentBlock().BaseFee()
+			baseFee := seqEngine.L2Chain().CurrentBlock().BaseFee
 			nonce, err := seqEngCl.PendingNonceAt(t.Ctx(), addrs[userIdx])
 			require.NoError(t, err)
 			tx := types.MustSignNewTx(privKeys[userIdx], signer, &types.DynamicFeeTx{

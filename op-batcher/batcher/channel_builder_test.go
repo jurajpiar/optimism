@@ -105,7 +105,7 @@ func newMiniL2BlockWithChainIDNumberParentAndL1Information(numTx int, chainID *b
 	}
 
 	l1Block := types.NewBlock(&types.Header{
-		EthBaseFee: big.NewInt(10),
+		BaseFee:    big.NewInt(10),
 		Difficulty: common.Big0,
 		Number:     big.NewInt(l1Number),
 		Time:       blockTime,

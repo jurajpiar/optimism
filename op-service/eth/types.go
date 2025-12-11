@@ -416,7 +416,7 @@ func (envelope *ExecutionPayloadEnvelope) CheckBlockHash() (actual common.Hash, 
 		Extra:            payload.ExtraData,
 		MixDigest:        common.Hash(payload.PrevRandao),
 		Nonce:            types.BlockNonce{}, // zeroed, proof-of-work legacy
-		EthBaseFee:       (*uint256.Int)(&payload.BaseFeePerGas).ToBig(),
+		BaseFee:          (*uint256.Int)(&payload.BaseFeePerGas).ToBig(),
 		WithdrawalsHash:  nil, // set below
 		BlobGasUsed:      (*uint64)(payload.BlobGasUsed),
 		ExcessBlobGas:    (*uint64)(payload.ExcessBlobGas),

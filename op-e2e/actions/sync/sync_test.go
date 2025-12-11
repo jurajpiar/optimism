@@ -240,7 +240,7 @@ func TestBackupUnsafe(gt *testing.T) {
 				ChainID:   sd.L2Cfg.Config.ChainID,
 				Nonce:     n,
 				GasTipCap: big.NewInt(2 * params.GWei),
-				GasFeeCap: new(big.Int).Add(miner.L1Chain().CurrentBlock().BaseFee(), big.NewInt(2*params.GWei)),
+				GasFeeCap: new(big.Int).Add(miner.L1Chain().CurrentBlock().BaseFee, big.NewInt(2*params.GWei)),
 				Gas:       params.TxGas,
 				To:        &dp.Addresses.Bob,
 				Value:     e2eutils.Ether(2),
@@ -401,7 +401,7 @@ func TestBackupUnsafeReorgForkChoiceInputError(gt *testing.T) {
 				ChainID:   sd.L2Cfg.Config.ChainID,
 				Nonce:     n,
 				GasTipCap: big.NewInt(2 * params.GWei),
-				GasFeeCap: new(big.Int).Add(miner.L1Chain().CurrentBlock().BaseFee(), big.NewInt(2*params.GWei)),
+				GasFeeCap: new(big.Int).Add(miner.L1Chain().CurrentBlock().BaseFee, big.NewInt(2*params.GWei)),
 				Gas:       params.TxGas,
 				To:        &dp.Addresses.Bob,
 				Value:     e2eutils.Ether(2),
@@ -534,7 +534,7 @@ func TestBackupUnsafeReorgForkChoiceNotInputError(gt *testing.T) {
 				ChainID:   sd.L2Cfg.Config.ChainID,
 				Nonce:     n,
 				GasTipCap: big.NewInt(2 * params.GWei),
-				GasFeeCap: new(big.Int).Add(miner.L1Chain().CurrentBlock().BaseFee(), big.NewInt(2*params.GWei)),
+				GasFeeCap: new(big.Int).Add(miner.L1Chain().CurrentBlock().BaseFee, big.NewInt(2*params.GWei)),
 				Gas:       params.TxGas,
 				To:        &dp.Addresses.Bob,
 				Value:     e2eutils.Ether(2),
@@ -960,7 +960,7 @@ func TestInvalidPayloadInSpanBatch(gt *testing.T) {
 			data := make([]byte, rand.Intn(100))
 			gas, err := core.FloorDataGas(data)
 			require.NoError(t, err)
-			baseFee := seqEng.L2Chain().CurrentBlock().BaseFee()
+			baseFee := seqEng.L2Chain().CurrentBlock().BaseFee
 			tx := types.MustSignNewTx(dp.Secrets.Alice, signer, &types.DynamicFeeTx{
 				ChainID:   sd.L2Cfg.Config.ChainID,
 				Nonce:     aliceNonce,

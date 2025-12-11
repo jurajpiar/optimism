@@ -48,7 +48,7 @@ type RPCHeader struct {
 	Nonce       types.BlockNonce `json:"nonce"`
 
 	// BaseFee was added by EIP-1559 and is ignored in legacy headers.
-	EthBaseFee *hexutil.Big `json:"baseFeePerGas"`
+	BaseFee *hexutil.Big `json:"baseFeePerGas"`
 
 	// Rootstock specific
 	RskMinimumGasPrice *hexutil.Big `json:"minimumGasPrice,omitempty"`
@@ -87,8 +87,8 @@ func (hdr *RPCHeader) checkPostMerge() error {
 		fmt.Println("types.BlockNonce():", types.BlockNonce{})
 		return fmt.Errorf("post-merge block header requires zeroed block nonce field, but got: %s", hdr.Nonce)
 	}
-	if hdr.BaseFee() == nil {
-		return fmt.Errorf("post-merge block header requires EIP-1559 base fee field, but got %s", hdr.BaseFee())
+	if hdr.BaseFee == nil {
+		return fmt.Errorf("post-merge block header requires EIP-1559 base fee field, but got %s", hdr.BaseFee)
 	}
 	if len(hdr.Extra) > 32 {
 		return fmt.Errorf("post-merge block header requires 32 or less bytes of extra data, but got %d", len(hdr.Extra))
@@ -126,7 +126,7 @@ func (hdr *RPCHeader) CreateGethHeader() *types.Header {
 		Extra:           hdr.Extra,
 		MixDigest:       hdr.MixDigest,
 		Nonce:           hdr.Nonce,
-		EthBaseFee:      (*big.Int)(hdr.BaseFee()),
+		BaseFee:         (*big.Int)(hdr.BaseFee),
 		WithdrawalsHash: hdr.WithdrawalsRoot,
 		// Cancun
 		BlobGasUsed:      (*uint64)(hdr.BlobGasUsed),
@@ -141,13 +141,6 @@ func (hdr *RPCHeader) isL1Block() bool {
 	return hdr.RskMinimumGasPrice != nil
 }
 
-func (hdr *RPCHeader) BaseFee() *hexutil.Big {
-	if hdr.isL1Block() {
-		return hdr.RskMinimumGasPrice
-	} else {
-		return hdr.EthBaseFee
-	}
-}
 func (hdr *RPCHeader) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInfo, error) {
 	if mustBePostMerge {
 		if err := hdr.checkPostMerge(); err != nil {
@@ -266,7 +259,7 @@ func (block *RPCBlock) ExecutionPayloadEnvelope(trustCache bool) (*eth.Execution
 		}
 	}
 	var baseFee uint256.Int
-	baseFee.SetFromBig((*big.Int)(block.BaseFee()))
+	baseFee.SetFromBig((*big.Int)(block.BaseFee))
 
 	// Unfortunately eth_getBlockByNumber either returns full transactions, or only tx-hashes.
 	// There is no option for encoded transactions.

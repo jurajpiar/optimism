@@ -436,7 +436,7 @@ func execTx(ctx context.Context, to *common.Address, data []byte, expectRevert b
 	}
 
 	tip := big.NewInt(params.GWei)
-	maxFee := new(big.Int).Mul(head.BaseFee(), big.NewInt(2))
+	maxFee := new(big.Int).Mul(head.BaseFee, big.NewInt(2))
 	maxFee = maxFee.Add(maxFee, tip)
 
 	chainID, err := env.l2.ChainID(ctx)
@@ -518,7 +518,7 @@ func checkBlobTxDenial(ctx context.Context, env *actionEnv) error {
 		blobFeeCap = uint256.NewInt(params.GWei)
 	}
 	gasTipCap := big.NewInt(2 * params.GWei)
-	gasFeeCap := new(big.Int).Add(gasTipCap, new(big.Int).Mul(latestHeader.BaseFee(), big.NewInt(2)))
+	gasFeeCap := new(big.Int).Add(gasTipCap, new(big.Int).Mul(latestHeader.BaseFee, big.NewInt(2)))
 
 	nonce, err := env.l2.PendingNonceAt(ctx, env.addr)
 	if err != nil {
@@ -773,7 +773,7 @@ func checkL1Fees(ctx context.Context, env *actionEnv) error {
 	}
 	gasTip := big.NewInt(2 * params.GWei)
 	gasMaxFee := new(big.Int).Add(
-		new(big.Int).Mul(big.NewInt(2), head.BaseFee()), gasTip)
+		new(big.Int).Mul(big.NewInt(2), head.BaseFee), gasTip)
 	to := common.Address{1, 2, 3, 5}
 	txData := &types.DynamicFeeTx{
 		ChainID:    rollupCfg.L2ChainID,
@@ -823,8 +823,8 @@ func checkL1Fees(ctx context.Context, env *actionEnv) error {
 	if err != nil {
 		return fmt.Errorf("failed to retrieve L1 origin %s of L2 block %s: %w", headRef.L1Origin, headRef, err)
 	}
-	if receipt.L1GasPrice.Cmp(l1Header.BaseFee()) != 0 {
-		return fmt.Errorf("L1 gas price does not include blob fee component: %d != %d", receipt.L1GasPrice, l1Header.BaseFee())
+	if receipt.L1GasPrice.Cmp(l1Header.BaseFee) != 0 {
+		return fmt.Errorf("L1 gas price does not include blob fee component: %d != %d", receipt.L1GasPrice, l1Header.BaseFee)
 	}
 	rawTx, err := tx.MarshalBinary()
 	if err != nil {

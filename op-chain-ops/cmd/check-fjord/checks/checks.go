@@ -306,7 +306,7 @@ func execTx(ctx context.Context, to *common.Address, data []byte, expectRevert b
 	}
 
 	tip := big.NewInt(params.GWei)
-	maxFee := new(big.Int).Mul(head.BaseFee(), big.NewInt(2))
+	maxFee := new(big.Int).Mul(head.BaseFee, big.NewInt(2))
 	maxFee = maxFee.Add(maxFee, tip)
 
 	chainID, err := env.L2.ChainID(ctx)

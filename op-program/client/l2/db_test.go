@@ -164,7 +164,7 @@ func createGenesis() *core.Genesis {
 		Config:     &params.ChainConfig{},
 		Difficulty: common.Big0,
 		ParentHash: common.Hash{},
-		EthBaseFee: big.NewInt(7),
+		BaseFee:    big.NewInt(7),
 		Alloc: map[common.Address]types.Account{
 			userAccount: {
 				Balance: big.NewInt(1_000_000_000_000_000_000),

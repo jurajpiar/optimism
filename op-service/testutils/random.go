@@ -340,7 +340,7 @@ func RandomHeaderWithTime(rng *rand.Rand, t uint64) *types.Header {
 		Extra:       RandomData(rng, rng.Intn(33)),
 		MixDigest:   common.Hash{},
 		Nonce:       types.BlockNonce{},
-		EthBaseFee:  big.NewInt(rng.Int63n(300_000_000_000)),
+		BaseFee:     big.NewInt(rng.Int63n(300_000_000_000)),
 	}
 }
 
@@ -364,7 +364,7 @@ func RandomBlockPrependTxsWithTime(rng *rand.Rand, txCount int, t uint64, ptxs .
 	txs := make([]*types.Transaction, 0, txCount+len(ptxs))
 	txs = append(txs, ptxs...)
 	for i := 0; i < txCount; i++ {
-		txs = append(txs, RandomTx(rng, header.BaseFee(), signer))
+		txs = append(txs, RandomTx(rng, header.BaseFee, signer))
 	}
 	receipts := make([]*types.Receipt, 0, len(txs))
 	cumulativeGasUsed := uint64(0)

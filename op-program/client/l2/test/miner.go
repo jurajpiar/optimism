@@ -56,7 +56,7 @@ func NewMiner(t *testing.T, logger log.Logger, isthmusTime uint64) (*Miner, *cor
 		Config:     &config,
 		Difficulty: common.Big0,
 		ParentHash: common.Hash{},
-		EthBaseFee: big.NewInt(7),
+		BaseFee:    big.NewInt(7),
 		Alloc: map[common.Address]types.Account{
 			params.HistoryStorageAddress: {Nonce: 1, Code: params.HistoryStorageCode, Balance: common.Big0}, // for Isthmus eip-2935
 		},
