@@ -2,14 +2,13 @@ package txmgr
 
 import (
 	"context"
-	"errors"
 	"math/big"
 )
 
 type GasPriceEstimatorFn func(ctx context.Context, backend ETHBackend) (*big.Int, *big.Int, *big.Int, error)
 
 func DefaultGasPriceEstimatorFn(ctx context.Context, backend ETHBackend) (*big.Int, *big.Int, *big.Int, error) {
-	tip, err := backend.SuggestGasTipCap(ctx)
+	tip, err := backend.SuggestGasPrice(ctx)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -18,8 +17,11 @@ func DefaultGasPriceEstimatorFn(ctx context.Context, backend ETHBackend) (*big.I
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
+	// Pre-London blocks don't have a base fee
 	if head.BaseFee == nil {
-		return nil, nil, nil, errors.New("txmgr does not support pre-london blocks that do not have a base fee")
+		// Return gas price as tip, nil baseFee, nil blobFee for pre-London blocks
+		return tip, nil, nil, nil
 	}
 
 	blobFee, err := backend.BlobBaseFee(ctx)

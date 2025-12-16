@@ -104,11 +104,11 @@ func (c *ChainIntent) Check() error {
 		return err
 	}
 
-	if c.Eip1559DenominatorCanyon == 0 ||
-		c.Eip1559Denominator == 0 ||
-		c.Eip1559Elasticity == 0 {
-		return fmt.Errorf("%w: chainId=%s", ErrEip1559ZeroValue, c.ID)
-	}
+	// if c.Eip1559DenominatorCanyon == 0 ||
+	// 	c.Eip1559Denominator == 0 ||
+	// 	c.Eip1559Elasticity == 0 {
+	// 	return fmt.Errorf("%w: chainId=%s", ErrEip1559ZeroValue, c.ID)
+	// }
 
 	if c.GasLimit == 0 {
 		return fmt.Errorf("%w: chainId=%s", ErrGasLimitZeroValue, c.ID)

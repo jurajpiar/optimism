@@ -105,6 +105,51 @@ func (f *RPCReceiptsFetcher) FetchReceipts(ctx context.Context, blockInfo eth.Bl
 		return nil, err
 	}
 
+	// Match receipts to txHashes by TxHash, then ensure correct TransactionIndex ordering
+	// Some RPC providers (like Rootstock) may return receipts out of order or with incorrect TransactionIndex values
+	if len(result) > 0 {
+		if m == EthGetTransactionReceiptBatch {
+			// For batch method, receipts should already be in correct order
+			// Just verify and fix TransactionIndex values
+			for i, r := range result {
+				if r == nil {
+					return nil, fmt.Errorf("receipt for transaction %s is nil", txHashes[i])
+				}
+				if r.TxHash != txHashes[i] {
+					return nil, fmt.Errorf("receipt at index %d has tx hash %s but expected %s", i, r.TxHash, txHashes[i])
+				}
+				// Fix TransactionIndex to match position
+				r.TransactionIndex = uint(i)
+			}
+		} else {
+			// For bulk methods, receipts may be out of order - reorder them
+			receiptMap := make(map[common.Hash]*types.Receipt, len(result))
+			for _, r := range result {
+				if r != nil && r.TxHash != (common.Hash{}) {
+					receiptMap[r.TxHash] = r
+				}
+			}
+
+			// Reorder receipts to match txHashes order
+			reordered := make(types.Receipts, len(txHashes))
+			missingReceipts := []common.Hash{}
+			for i, txHash := range txHashes {
+				if r, ok := receiptMap[txHash]; ok {
+					// Fix TransactionIndex to match position
+					r.TransactionIndex = uint(i)
+					reordered[i] = r
+				} else {
+					missingReceipts = append(missingReceipts, txHash)
+				}
+			}
+
+			if len(missingReceipts) > 0 {
+				return nil, fmt.Errorf("receipt for transaction %s not found", missingReceipts[0])
+			}
+			result = reordered
+		}
+	}
+
 	if err = validateReceipts(block, blockInfo.ReceiptHash(), txHashes, result); err != nil {
 		return nil, err
 	}

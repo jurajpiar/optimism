@@ -24,16 +24,22 @@ var (
 
 // DeployerGasPriceEstimator is a custom gas price estimator for use with op-deployer.
 // It pads the base fee by 50% and multiplies the suggested tip by 5 up to a max of
-// 50 gwei.
+// 50 gwei. For pre-London blocks, it returns the gas price directly.
 func DeployerGasPriceEstimator(ctx context.Context, client txmgr.ETHBackend) (*big.Int, *big.Int, *big.Int, error) {
 	chainHead, err := client.HeaderByNumber(ctx, nil)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get block: %w", err)
 	}
 
-	tip, err := client.SuggestGasTipCap(ctx)
+	tip, err := client.SuggestGasPrice(ctx)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get gas tip cap: %w", err)
+	}
+
+	// Pre-London blocks don't have a base fee
+	if chainHead.BaseFee == nil {
+		// For pre-London blocks, return gas price as tip, nil baseFee, nil blobFee
+		return tip, nil, nil, nil
 	}
 
 	baseFeePad := new(big.Int).Div(chainHead.BaseFee, baseFeePadFactor)

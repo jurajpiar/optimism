@@ -325,12 +325,12 @@ type EIP1559DeployConfig struct {
 var _ ConfigChecker = (*EIP1559DeployConfig)(nil)
 
 func (d *EIP1559DeployConfig) Check(log log.Logger) error {
-	if d.EIP1559Denominator == 0 {
-		return fmt.Errorf("%w: EIP1559Denominator cannot be 0", ErrInvalidDeployConfig)
-	}
-	if d.EIP1559Elasticity == 0 {
-		return fmt.Errorf("%w: EIP1559Elasticity cannot be 0", ErrInvalidDeployConfig)
-	}
+	// if d.EIP1559Denominator == 0 {
+	// 	return fmt.Errorf("%w: EIP1559Denominator cannot be 0", ErrInvalidDeployConfig)
+	// }
+	// if d.EIP1559Elasticity == 0 {
+	// 	return fmt.Errorf("%w: EIP1559Elasticity cannot be 0", ErrInvalidDeployConfig)
+	// }
 	return nil
 }
 

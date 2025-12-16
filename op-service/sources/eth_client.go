@@ -344,6 +344,9 @@ func (s *EthClient) FetchReceiptsByNumber(ctx context.Context, number uint64) (e
 	return s.FetchReceipts(ctx, blockHash.Hash())
 }
 
+// RemascContractAddress is the address used by Rootstock's remasc (remuneration of miners and smart contracts) transactions
+var RemascContractAddress = common.HexToAddress("0x0000000000000000000000000000000001000008")
+
 // FetchReceipts returns a block info and all of the receipts associated with transactions in the block.
 // It verifies the receipt hash in the block header against the receipt hash of the fetched receipts
 // to ensure that the execution engine did not fail to return any receipts.
@@ -353,8 +356,22 @@ func (s *EthClient) FetchReceipts(ctx context.Context, blockHash common.Hash) (e
 		return nil, nil, fmt.Errorf("querying block: %w", err)
 	}
 
-	txHashes, _ := eth.TransactionsToHashes(txs), eth.ToBlockID(info)
-	receipts, err := s.recProvider.FetchReceipts(ctx, info, txHashes)
+	// Filter out remasc transactions (Rootstock special transactions)
+	// These transactions have To address 0x0000000000000000000000000000000001000008
+	validTxHashes := make([]common.Hash, 0, len(txs))
+	for _, tx := range txs {
+		if tx == nil {
+			continue
+		}
+		to := tx.To()
+		// Skip remasc transactions
+		if to != nil && *to == RemascContractAddress {
+			continue
+		}
+		validTxHashes = append(validTxHashes, tx.Hash())
+	}
+
+	receipts, err := s.recProvider.FetchReceipts(ctx, info, validTxHashes)
 	if err != nil {
 		return nil, nil, err
 	}
