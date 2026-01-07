@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/sources/caching"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -71,84 +70,84 @@ func NewRPCReceiptsFetcher(client rpcClient, log log.Logger, config RPCReceiptsC
 }
 
 func (f *RPCReceiptsFetcher) FetchReceipts(ctx context.Context, blockInfo eth.BlockInfo, txHashes []common.Hash) (result types.Receipts, err error) {
-	m := f.PickReceiptsMethod(len(txHashes))
+	// m := f.PickReceiptsMethod(len(txHashes))
 	block := eth.ToBlockID(blockInfo)
-	switch m {
-	case EthGetTransactionReceiptBatch:
-		result, err = f.basic.FetchReceipts(ctx, blockInfo, txHashes)
-	case AlchemyGetTransactionReceipts:
-		var tmp receiptsWrapper
-		err = f.client.CallContext(ctx, &tmp, "alchemy_getTransactionReceipts", blockHashParameter{BlockHash: block.Hash})
-		result = tmp.Receipts
-	case DebugGetRawReceipts:
-		var rawReceipts []hexutil.Bytes
-		err = f.client.CallContext(ctx, &rawReceipts, "debug_getRawReceipts", block.Hash)
-		if err == nil {
-			if len(rawReceipts) == len(txHashes) {
-				result, err = eth.DecodeRawReceipts(block, rawReceipts, txHashes)
-			} else {
-				err = fmt.Errorf("got %d raw receipts, but expected %d", len(rawReceipts), len(txHashes))
-			}
-		}
-	case ParityGetBlockReceipts:
-		err = f.client.CallContext(ctx, &result, "parity_getBlockReceipts", block.Hash)
-	case EthGetBlockReceipts:
-		err = f.client.CallContext(ctx, &result, "eth_getBlockReceipts", block.Hash)
-	case ErigonGetBlockReceiptsByBlockHash:
-		err = f.client.CallContext(ctx, &result, "erigon_getBlockReceiptsByBlockHash", block.Hash)
-	default:
-		err = fmt.Errorf("unknown receipt fetching method: %d", uint64(m))
-	}
+	// switch m {
+	// case EthGetTransactionReceiptBatch:
+	result, err = f.basic.FetchReceipts(ctx, blockInfo, txHashes)
+	// case AlchemyGetTransactionReceipts:
+	// 	var tmp receiptsWrapper
+	// 	err = f.client.CallContext(ctx, &tmp, "alchemy_getTransactionReceipts", blockHashParameter{BlockHash: block.Hash})
+	// 	result = tmp.Receipts
+	// case DebugGetRawReceipts:
+	// 	var rawReceipts []hexutil.Bytes
+	// 	err = f.client.CallContext(ctx, &rawReceipts, "debug_getRawReceipts", block.Hash)
+	// 	if err == nil {
+	// 		if len(rawReceipts) == len(txHashes) {
+	// 			result, err = eth.DecodeRawReceipts(block, rawReceipts, txHashes)
+	// 		} else {
+	// 			err = fmt.Errorf("got %d raw receipts, but expected %d", len(rawReceipts), len(txHashes))
+	// 		}
+	// 	}
+	// case ParityGetBlockReceipts:
+	// 	err = f.client.CallContext(ctx, &result, "parity_getBlockReceipts", block.Hash)
+	// case EthGetBlockReceipts:
+	// 	err = f.client.CallContext(ctx, &result, "eth_getBlockReceipts", block.Hash)
+	// case ErigonGetBlockReceiptsByBlockHash:
+	// 	err = f.client.CallContext(ctx, &result, "erigon_getBlockReceiptsByBlockHash", block.Hash)
+	// default:
+	// 	err = fmt.Errorf("unknown receipt fetching method: %d", uint64(m))
+	// }
 
-	if err != nil {
-		f.OnReceiptsMethodErr(m, err)
-		return nil, err
-	}
+	// if err != nil {
+	// 	f.OnReceiptsMethodErr(m, err)
+	// 	return nil, err
+	// }
 
-	// Match receipts to txHashes by TxHash, then ensure correct TransactionIndex ordering
-	// Some RPC providers (like Rootstock) may return receipts out of order or with incorrect TransactionIndex values
-	if len(result) > 0 {
-		if m == EthGetTransactionReceiptBatch {
-			// For batch method, receipts should already be in correct order
-			// Just verify and fix TransactionIndex values
-			for i, r := range result {
-				if r == nil {
-					return nil, fmt.Errorf("receipt for transaction %s is nil", txHashes[i])
-				}
-				if r.TxHash != txHashes[i] {
-					return nil, fmt.Errorf("receipt at index %d has tx hash %s but expected %s", i, r.TxHash, txHashes[i])
-				}
-				// Fix TransactionIndex to match position
-				r.TransactionIndex = uint(i)
-			}
-		} else {
-			// For bulk methods, receipts may be out of order - reorder them
-			receiptMap := make(map[common.Hash]*types.Receipt, len(result))
-			for _, r := range result {
-				if r != nil && r.TxHash != (common.Hash{}) {
-					receiptMap[r.TxHash] = r
-				}
-			}
+	// // Match receipts to txHashes by TxHash, then ensure correct TransactionIndex ordering
+	// // Some RPC providers (like Rootstock) may return receipts out of order or with incorrect TransactionIndex values
+	// if len(result) > 0 {
+	// 	if m == EthGetTransactionReceiptBatch {
+	// 		// For batch method, receipts should already be in correct order
+	// 		// Just verify and fix TransactionIndex values
+	// 		for i, r := range result {
+	// 			if r == nil {
+	// 				return nil, fmt.Errorf("receipt for transaction %s is nil", txHashes[i])
+	// 			}
+	// 			if r.TxHash != txHashes[i] {
+	// 				return nil, fmt.Errorf("receipt at index %d has tx hash %s but expected %s", i, r.TxHash, txHashes[i])
+	// 			}
+	// 			// Fix TransactionIndex to match position
+	// 			r.TransactionIndex = uint(i)
+	// 		}
+	// 	} else {
+	// 		// For bulk methods, receipts may be out of order - reorder them
+	// 		receiptMap := make(map[common.Hash]*types.Receipt, len(result))
+	// 		for _, r := range result {
+	// 			if r != nil && r.TxHash != (common.Hash{}) {
+	// 				receiptMap[r.TxHash] = r
+	// 			}
+	// 		}
 
-			// Reorder receipts to match txHashes order
-			reordered := make(types.Receipts, len(txHashes))
-			missingReceipts := []common.Hash{}
-			for i, txHash := range txHashes {
-				if r, ok := receiptMap[txHash]; ok {
-					// Fix TransactionIndex to match position
-					r.TransactionIndex = uint(i)
-					reordered[i] = r
-				} else {
-					missingReceipts = append(missingReceipts, txHash)
-				}
-			}
+	// 		// Reorder receipts to match txHashes order
+	// 		reordered := make(types.Receipts, len(txHashes))
+	// 		missingReceipts := []common.Hash{}
+	// 		for i, txHash := range txHashes {
+	// 			if r, ok := receiptMap[txHash]; ok {
+	// 				// Fix TransactionIndex to match position
+	// 				r.TransactionIndex = uint(i)
+	// 				reordered[i] = r
+	// 			} else {
+	// 				missingReceipts = append(missingReceipts, txHash)
+	// 			}
+	// 		}
 
-			if len(missingReceipts) > 0 {
-				return nil, fmt.Errorf("receipt for transaction %s not found", missingReceipts[0])
-			}
-			result = reordered
-		}
-	}
+	// 		if len(missingReceipts) > 0 {
+	// 			return nil, fmt.Errorf("receipt for transaction %s not found", missingReceipts[0])
+	// 		}
+	// 		result = reordered
+	// 	}
+	// }
 
 	if err = validateReceipts(block, blockInfo.ReceiptHash(), txHashes, result); err != nil {
 		return nil, err
