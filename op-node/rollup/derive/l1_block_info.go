@@ -491,9 +491,12 @@ func L1InfoDeposit(rollupCfg *rollup.Config, l1ChainConfig *params.ChainConfig, 
 		BatcherAddr:    sysCfg.BatcherAddr,
 	}
 
-	isEcotoneActivated := isEcotoneButNotFirstBlock(rollupCfg, l2Timestamp)
-	isIsthmusActivated := isIsthmusButNotFirstBlock(rollupCfg, l2Timestamp)
-	isJovianActivated := isJovianButNotFirstBlock(rollupCfg, l2Timestamp)
+	isEcotoneActivated := false
+	isIsthmusActivated := false
+	isJovianActivated := false
+	// isEcotoneActivated := isEcotoneButNotFirstBlock(rollupCfg, l2Timestamp)
+	// isIsthmusActivated := isIsthmusButNotFirstBlock(rollupCfg, l2Timestamp)
+	// isJovianActivated := isJovianButNotFirstBlock(rollupCfg, l2Timestamp)
 
 	// 1. Set all fields according to active forks
 	if isEcotoneActivated {
