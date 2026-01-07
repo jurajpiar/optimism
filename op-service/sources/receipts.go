@@ -35,6 +35,9 @@ func validateReceipts(block eth.BlockID, receiptHash common.Hash, txHashes []com
 	logIndex := uint(0)
 	cumulativeGas := uint64(0)
 	for i, r := range receipts {
+		if common.Address(r.ContractAddress.Bytes()) == common.HexToAddress("0x0000000000000000000000000000000000000000") {
+			continue
+		}
 		if r == nil { // on reorgs or other cases the receipts may disappear before they can be retrieved.
 			return fmt.Errorf("receipt of tx %d returns nil on retrieval", i)
 		}
