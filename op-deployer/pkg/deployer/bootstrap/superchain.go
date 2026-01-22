@@ -30,6 +30,7 @@ import (
 type SuperchainConfig struct {
 	L1RPCUrl         string
 	PrivateKey       string
+	L1ChainType      deployer.L1ChainType
 	Logger           log.Logger
 	ArtifactsLocator *artifacts.Locator
 	CacheDir         string
@@ -95,6 +96,11 @@ func SuperchainCLI(cliCtx *cli.Context) error {
 		return fmt.Errorf("failed to parse artifacts URL: %w", err)
 	}
 
+	l1ChainType, err := deployer.ParseL1ChainType(cliCtx.String(deployer.L1ChainTypeFlagName))
+	if err != nil {
+		return fmt.Errorf("failed to parse L1 chain type: %w", err)
+	}
+
 	superchainProxyAdminOwner := common.HexToAddress(cliCtx.String(SuperchainProxyAdminOwnerFlagName))
 	protocolVersionsOwner := common.HexToAddress(cliCtx.String(ProtocolVersionsOwnerFlagName))
 	guardian := common.HexToAddress(cliCtx.String(GuardianFlagName))
@@ -106,6 +112,7 @@ func SuperchainCLI(cliCtx *cli.Context) error {
 	cfg := SuperchainConfig{
 		L1RPCUrl:                  l1RPCUrl,
 		PrivateKey:                privateKey,
+		L1ChainType:               l1ChainType,
 		Logger:                    l,
 		ArtifactsLocator:          artifactsLocator,
 		CacheDir:                  cacheDir,
@@ -206,13 +213,26 @@ func Superchain(ctx context.Context, cfg SuperchainConfig) (opcm.DeploySuperchai
 	signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(cfg.privateKeyECDSA, chainID))
 	chainDeployer := crypto.PubkeyToAddress(cfg.privateKeyECDSA.PublicKey)
 
-	bcaster, err := broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
-		Logger:  lgr,
-		ChainID: chainID,
-		Client:  l1Client,
-		Signer:  signer,
-		From:    chainDeployer,
-	})
+	var bcaster broadcaster.Broadcaster
+	switch cfg.L1ChainType {
+	case deployer.L1ChainTypeRSK:
+		lgr.Info("Using RSK broadcaster for Rootstock chain")
+		bcaster, err = broadcaster.NewRSKKeyedBroadcaster(broadcaster.RSKKeyedBroadcasterOpts{
+			Logger:  lgr,
+			ChainID: chainID,
+			RPCUrl:  cfg.L1RPCUrl,
+			Signer:  signer,
+			From:    chainDeployer,
+		})
+	default:
+		bcaster, err = broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
+			Logger:  lgr,
+			ChainID: chainID,
+			Client:  l1Client,
+			Signer:  signer,
+			From:    chainDeployer,
+		})
+	}
 	if err != nil {
 		return dso, fmt.Errorf("failed to create broadcaster: %w", err)
 	}

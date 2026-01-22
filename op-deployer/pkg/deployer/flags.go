@@ -29,7 +29,41 @@ const (
 	ContractNameFlagName     = flags.ContractNameFlagName
 	VerifierTypeFlagName     = flags.VerifierTypeFlagName
 	VerifierUrlFlagName      = flags.VerifierUrlFlagName
+	L1ChainTypeFlagName      = "l1-chain-type"
 )
+
+// L1ChainType represents the type of L1 chain being deployed to.
+// This affects gas estimation, transaction management, and client selection.
+type L1ChainType string
+
+const (
+	// L1ChainTypeEthereum is the default chain type for Ethereum-compatible chains.
+	// Uses EIP-1559 gas pricing and standard go-ethereum client.
+	L1ChainTypeEthereum L1ChainType = "ethereum"
+
+	// L1ChainTypeRSK is for Rootstock (RSK) chains.
+	// Uses legacy gas pricing, RSK-specific timing, and gorsk client.
+	L1ChainTypeRSK L1ChainType = "rsk"
+)
+
+// ValidL1ChainType returns true if the given chain type is valid.
+func ValidL1ChainType(ct L1ChainType) bool {
+	switch ct {
+	case L1ChainTypeEthereum, L1ChainTypeRSK:
+		return true
+	default:
+		return false
+	}
+}
+
+// ParseL1ChainType parses a string into an L1ChainType.
+func ParseL1ChainType(s string) (L1ChainType, error) {
+	ct := L1ChainType(s)
+	if !ValidL1ChainType(ct) {
+		return "", fmt.Errorf("invalid L1 chain type: %s (valid options: %s, %s)", s, L1ChainTypeEthereum, L1ChainTypeRSK)
+	}
+	return ct, nil
+}
 
 var (
 	L1RPCURLFlag = &cli.StringFlag{
@@ -134,6 +168,12 @@ var (
 		EnvVars: PrefixEnvVar("VERIFY"),
 		Value:   false,
 	}
+	L1ChainTypeFlag = &cli.StringFlag{
+		Name:    L1ChainTypeFlagName,
+		Usage:   fmt.Sprintf("Type of L1 chain. Options: %s (default), %s", L1ChainTypeEthereum, L1ChainTypeRSK),
+		EnvVars: PrefixEnvVar("L1_CHAIN_TYPE"),
+		Value:   string(L1ChainTypeEthereum),
+	}
 )
 
 var GlobalFlags = append([]cli.Flag{CacheDirFlag}, oplog.CLIFlags(EnvVarPrefix)...)
@@ -150,6 +190,7 @@ var ApplyFlags = []cli.Flag{
 	WorkdirFlag,
 	PrivateKeyFlag,
 	DeploymentTargetFlag,
+	L1ChainTypeFlag,
 	OpProgramSvcUrlFlag,
 	AutoVerifyFlag,
 	VerifierAPIKeyFlag,

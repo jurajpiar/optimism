@@ -76,6 +76,7 @@ require (
 	golang.org/x/time v0.11.0
 	gonum.org/v1/plot v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
+	gorsk v0.0.0
 )
 
 require (
@@ -312,9 +313,11 @@ require (
 	lukechampine.com/blake3 v1.3.0 // indirect
 )
 
-replace github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101608.0-rc.1
+// replace github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101608.0-rc.1
 
-// replace github.com/ethereum/go-ethereum => ../op-geth
+replace github.com/ethereum/go-ethereum => ../op-geth
+
+replace gorsk => ../gorsk
 
 // replace github.com/ethereum-optimism/superchain-registry/superchain => ../superchain-registry/superchain
 // This release keeps breaking Go builds. Stop that.

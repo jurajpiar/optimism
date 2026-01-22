@@ -80,6 +80,132 @@ interface IOPContractsManagerDeployer {
         external
         returns (IOPContractsManager.DeployOutput memory);
 
+    function deployAddressManager(
+        IOPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        IOPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (IOPContractsManager.DeployOutput memory);
+
+    function deployProxyAdmin(
+        IOPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        IOPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (IOPContractsManager.DeployOutput memory);
+
+    function deployL1ERC721Bridge(
+        IOPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        IOPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (IOPContractsManager.DeployOutput memory);
+
+    function deployOptimismPortal(
+        IOPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        IOPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (IOPContractsManager.DeployOutput memory);
+
+    function deployETHLockbox(
+        IOPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        IOPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (IOPContractsManager.DeployOutput memory);
+
+    function deploySystemConfig(
+        IOPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        IOPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (IOPContractsManager.DeployOutput memory);
+
+    function deployOptimismMintableERC20Factory(
+        IOPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        IOPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (IOPContractsManager.DeployOutput memory);
+
+    function deployDisputeGameFactory(
+        IOPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        IOPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (IOPContractsManager.DeployOutput memory);
+
+    function deployAnchorStateRegistry(
+        IOPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        IOPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (IOPContractsManager.DeployOutput memory);
+
+    function deployL1StandardBridge(
+        IOPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        IOPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (IOPContractsManager.DeployOutput memory);
+
+    function deployL1CrossDomainMessenger(
+        IOPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        IOPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (IOPContractsManager.DeployOutput memory);
+
+    function deployDelayedWETHPermissionedGame(
+        IOPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        IOPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (IOPContractsManager.DeployOutput memory);
+
+    function deployPermissionedDisputeGame(
+        IOPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        IOPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (IOPContractsManager.DeployOutput memory);
+
+    function setAndInitializeProxyImplementations(
+        IOPContractsManager.DeployInput calldata _input,
+        ISuperchainConfig _superchainConfig,
+        address _deployer,
+        IOPContractsManager.DeployOutput memory _output
+    )
+        external
+        returns (IOPContractsManager.DeployOutput memory);
+
     function contractsContainer() external view returns (IOPContractsManagerContractsContainer);
 }
 
@@ -350,6 +476,21 @@ interface IOPContractsManager {
         returns (string memory);
 
     function deploy(DeployInput calldata _input) external returns (DeployOutput memory);
+
+    function deployAddressManager(DeployInput calldata _input, DeployOutput memory _output) external returns (DeployOutput memory);
+    function deployProxyAdmin(DeployInput calldata _input, DeployOutput memory _output) external returns (DeployOutput memory);
+    function deployL1ERC721Bridge(DeployInput calldata _input, DeployOutput memory _output) external returns (DeployOutput memory);
+    function deployOptimismPortal(DeployInput calldata _input, DeployOutput memory _output) external returns (DeployOutput memory);
+    function deployETHLockbox(DeployInput calldata _input, DeployOutput memory _output) external returns (DeployOutput memory);
+    function deploySystemConfig(DeployInput calldata _input, DeployOutput memory _output) external returns (DeployOutput memory);
+    function deployOptimismMintableERC20Factory(DeployInput calldata _input, DeployOutput memory _output) external returns (DeployOutput memory);
+    function deployDisputeGameFactory(DeployInput calldata _input, DeployOutput memory _output) external returns (DeployOutput memory);
+    function deployAnchorStateRegistry(DeployInput calldata _input, DeployOutput memory _output) external returns (DeployOutput memory);
+    function deployL1StandardBridge(DeployInput calldata _input, DeployOutput memory _output) external returns (DeployOutput memory);
+    function deployL1CrossDomainMessenger(DeployInput calldata _input, DeployOutput memory _output) external returns (DeployOutput memory);
+    function deployDelayedWETHPermissionedGame(DeployInput calldata _input, DeployOutput memory _output) external returns (DeployOutput memory);
+    function deployPermissionedDisputeGame(DeployInput calldata _input, DeployOutput memory _output) external returns (DeployOutput memory);
+    function setAndInitializeProxyImplementations(DeployInput calldata _input, DeployOutput memory _output) external returns (DeployOutput memory);
 
     /// @notice Upgrades the implementation of all proxies in the specified chains
     /// @param _opChainConfigs The chains to upgrade

@@ -36,6 +36,7 @@ type ApplyConfig struct {
 	Workdir          string
 	PrivateKey       string
 	DeploymentTarget DeploymentTarget
+	L1ChainType      L1ChainType
 	Logger           log.Logger
 	CacheDir         string
 	privateKeyECDSA  *ecdsa.PrivateKey
@@ -89,15 +90,20 @@ func ApplyCLI() func(cliCtx *cli.Context) error {
 		privateKey := cliCtx.String(PrivateKeyFlagName)
 		cacheDir := cliCtx.String(CacheDirFlagName)
 		depTarget, err := NewDeploymentTarget(cliCtx.String(DeploymentTargetFlag.Name))
+		if err != nil {
+			return fmt.Errorf("failed to parse deployment target: %w", err)
+		}
+
+		l1ChainType, err := ParseL1ChainType(cliCtx.String(L1ChainTypeFlagName))
+		if err != nil {
+			return fmt.Errorf("failed to parse L1 chain type: %w", err)
+		}
+
 		opProgramSvcUrl := cliCtx.String(OpProgramSvcUrlFlag.Name)
 
 		var preStateBuilder pipeline.PreStateBuilder
 		if opProgramSvcUrl != "" {
 			preStateBuilder = prestate.NewPrestateBuilderClient(opProgramSvcUrl)
-		}
-
-		if err != nil {
-			return fmt.Errorf("failed to parse deployment target: %w", err)
 		}
 
 		ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
@@ -107,6 +113,7 @@ func ApplyCLI() func(cliCtx *cli.Context) error {
 			Workdir:          workdir,
 			PrivateKey:       privateKey,
 			DeploymentTarget: depTarget,
+			L1ChainType:      l1ChainType,
 			Logger:           l,
 			CacheDir:         cacheDir,
 			PreStateBuilder:  preStateBuilder,
@@ -161,6 +168,7 @@ func Apply(ctx context.Context, cfg ApplyConfig) error {
 	if err := ApplyPipeline(ctx, ApplyPipelineOpts{
 		L1RPCUrl:           cfg.L1RPCUrl,
 		DeploymentTarget:   cfg.DeploymentTarget,
+		L1ChainType:        cfg.L1ChainType,
 		DeployerPrivateKey: cfg.privateKeyECDSA,
 		Intent:             intent,
 		State:              st,
@@ -183,6 +191,7 @@ type pipelineStage struct {
 type ApplyPipelineOpts struct {
 	L1RPCUrl           string
 	DeploymentTarget   DeploymentTarget
+	L1ChainType        L1ChainType
 	DeployerPrivateKey *ecdsa.PrivateKey
 	Intent             *state.Intent
 	State              *state.State
@@ -282,13 +291,26 @@ func ApplyPipeline(
 
 		signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(opts.DeployerPrivateKey, chainID))
 
-		bcaster, err = broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
-			Logger:  opts.Logger,
-			ChainID: new(big.Int).SetUint64(intent.L1ChainID),
-			Client:  l1Client,
-			Signer:  signer,
-			From:    deployer,
-		})
+		// Select broadcaster based on L1 chain type
+		switch opts.L1ChainType {
+		case L1ChainTypeRSK:
+			opts.Logger.Info("Using RSK broadcaster for Rootstock chain")
+			bcaster, err = broadcaster.NewRSKKeyedBroadcaster(broadcaster.RSKKeyedBroadcasterOpts{
+				Logger:  opts.Logger,
+				ChainID: new(big.Int).SetUint64(intent.L1ChainID),
+				RPCUrl:  opts.L1RPCUrl,
+				Signer:  signer,
+				From:    deployer,
+			})
+		default:
+			bcaster, err = broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
+				Logger:  opts.Logger,
+				ChainID: new(big.Int).SetUint64(intent.L1ChainID),
+				Client:  l1Client,
+				Signer:  signer,
+				From:    deployer,
+			})
+		}
 		if err != nil {
 			return fmt.Errorf("failed to create broadcaster: %w", err)
 		}
@@ -350,12 +372,12 @@ func ApplyPipeline(
 			}
 			return pipeline.InitLiveStrategy(ctx, pEnv, intent, st)
 		}},
-		{"deploy-superchain", func() error {
-			return pipeline.DeploySuperchain(pEnv, intent, st)
-		}},
-		{"deploy-implementations", func() error {
-			return pipeline.DeployImplementations(pEnv, intent, st)
-		}},
+		// {"deploy-superchain", func() error {
+		// 	return pipeline.DeploySuperchain(pEnv, intent, st)
+		// }},
+		// {"deploy-implementations", func() error {
+		// 	return pipeline.DeployImplementations(pEnv, intent, st)
+		// }},
 	}
 
 	// Deploy all OP Chains first.

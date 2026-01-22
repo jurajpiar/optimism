@@ -31,26 +31,27 @@ import (
 )
 
 type ImplementationsConfig struct {
-	L1RPCUrl                        string             `cli:"l1-rpc-url"`
-	PrivateKey                      string             `cli:"private-key"`
-	ArtifactsLocator                *artifacts.Locator `cli:"artifacts-locator"`
-	MIPSVersion                     int                `cli:"mips-version"`
-	WithdrawalDelaySeconds          uint64             `cli:"withdrawal-delay-seconds"`
-	MinProposalSizeBytes            uint64             `cli:"min-proposal-size-bytes"`
-	ChallengePeriodSeconds          uint64             `cli:"challenge-period-seconds"`
-	ProofMaturityDelaySeconds       uint64             `cli:"proof-maturity-delay-seconds"`
-	DisputeGameFinalityDelaySeconds uint64             `cli:"dispute-game-finality-delay-seconds"`
-	DevFeatureBitmap                common.Hash        `cli:"dev-feature-bitmap"`
-	FaultGameMaxGameDepth           uint64             `cli:"dispute-max-game-depth"`
-	FaultGameSplitDepth             uint64             `cli:"dispute-split-depth"`
-	FaultGameClockExtension         uint64             `cli:"dispute-clock-extension"`
-	FaultGameMaxClockDuration       uint64             `cli:"dispute-max-clock-duration"`
-	SuperchainConfigProxy           common.Address     `cli:"superchain-config-proxy"`
-	ProtocolVersionsProxy           common.Address     `cli:"protocol-versions-proxy"`
-	L1ProxyAdminOwner               common.Address     `cli:"l1-proxy-admin-owner"`
-	SuperchainProxyAdmin            common.Address     `cli:"superchain-proxy-admin"`
-	Challenger                      common.Address     `cli:"challenger"`
-	CacheDir                        string             `cli:"cache-dir"`
+	L1RPCUrl                        string                `cli:"l1-rpc-url"`
+	PrivateKey                      string                `cli:"private-key"`
+	L1ChainType                     deployer.L1ChainType  `cli:"l1-chain-type"`
+	ArtifactsLocator                *artifacts.Locator    `cli:"artifacts-locator"`
+	MIPSVersion                     int                   `cli:"mips-version"`
+	WithdrawalDelaySeconds          uint64                `cli:"withdrawal-delay-seconds"`
+	MinProposalSizeBytes            uint64                `cli:"min-proposal-size-bytes"`
+	ChallengePeriodSeconds          uint64                `cli:"challenge-period-seconds"`
+	ProofMaturityDelaySeconds       uint64                `cli:"proof-maturity-delay-seconds"`
+	DisputeGameFinalityDelaySeconds uint64                `cli:"dispute-game-finality-delay-seconds"`
+	DevFeatureBitmap                common.Hash           `cli:"dev-feature-bitmap"`
+	FaultGameMaxGameDepth           uint64                `cli:"dispute-max-game-depth"`
+	FaultGameSplitDepth             uint64                `cli:"dispute-split-depth"`
+	FaultGameClockExtension         uint64                `cli:"dispute-clock-extension"`
+	FaultGameMaxClockDuration       uint64                `cli:"dispute-max-clock-duration"`
+	SuperchainConfigProxy           common.Address        `cli:"superchain-config-proxy"`
+	ProtocolVersionsProxy           common.Address        `cli:"protocol-versions-proxy"`
+	L1ProxyAdminOwner               common.Address        `cli:"l1-proxy-admin-owner"`
+	SuperchainProxyAdmin            common.Address        `cli:"superchain-proxy-admin"`
+	Challenger                      common.Address        `cli:"challenger"`
+	CacheDir                        string                `cli:"cache-dir"`
 
 	Logger log.Logger
 
@@ -217,13 +218,26 @@ func Implementations(ctx context.Context, cfg ImplementationsConfig) (opcm.Deplo
 	signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(cfg.privateKeyECDSA, chainID))
 	chainDeployer := crypto.PubkeyToAddress(cfg.privateKeyECDSA.PublicKey)
 
-	bcaster, err := broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
-		Logger:  lgr,
-		ChainID: chainID,
-		Client:  l1Client,
-		Signer:  signer,
-		From:    chainDeployer,
-	})
+	var bcaster broadcaster.Broadcaster
+	switch cfg.L1ChainType {
+	case deployer.L1ChainTypeRSK:
+		lgr.Info("Using RSK broadcaster for Rootstock chain")
+		bcaster, err = broadcaster.NewRSKKeyedBroadcaster(broadcaster.RSKKeyedBroadcasterOpts{
+			Logger:  lgr,
+			ChainID: chainID,
+			RPCUrl:  cfg.L1RPCUrl,
+			Signer:  signer,
+			From:    chainDeployer,
+		})
+	default:
+		bcaster, err = broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
+			Logger:  lgr,
+			ChainID: chainID,
+			Client:  l1Client,
+			Signer:  signer,
+			From:    chainDeployer,
+		})
+	}
 	if err != nil {
 		return dio, fmt.Errorf("failed to create broadcaster: %w", err)
 	}
