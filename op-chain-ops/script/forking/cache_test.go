@@ -152,7 +152,7 @@ func TestCachedSource_CacheEviction(t *testing.T) {
 	cached, mockSource := setupCache(t)
 
 	// Test nonce cache eviction
-	for i := 0; i < 1001; i++ { // Cache size is 1000
+	for i := 0; i < 10001; i++ { // Cache size is 10000
 		addr := common.BigToAddress(big.NewInt(int64(i)))
 		mockSource.On("Nonce", addr).Return(uint64(i), nil).Once()
 		_, _ = cached.Nonce(addr)
@@ -163,7 +163,7 @@ func TestCachedSource_CacheEviction(t *testing.T) {
 	mockSource.On("Nonce", firstAddr).Return(uint64(0), nil).Once()
 	_, _ = cached.Nonce(firstAddr)
 
-	mockSource.AssertNumberOfCalls(t, "Nonce", 1002) // 1001 + 1 for evicted key
+	mockSource.AssertNumberOfCalls(t, "Nonce", 10002) // 10001 + 1 for evicted key
 }
 
 func TestCachedSource_MultipleStorageSlots(t *testing.T) {
