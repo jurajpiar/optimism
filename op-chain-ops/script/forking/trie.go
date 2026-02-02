@@ -3,6 +3,7 @@ package forking
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/holiman/uint256"
 
@@ -35,11 +36,39 @@ func (f *ForkedAccountsTrie) Copy() *ForkedAccountsTrie {
 	}
 }
 
-func (f *ForkedAccountsTrie) PrefetchStorage(_ common.Address, _ [][]byte) error {
-	return nil
+// PrefetchStorage uses eth_getProof (if available) to batch-fetch storage slots
+// and populate the cache. This is called by geth's state prefetcher.
+func (f *ForkedAccountsTrie) PrefetchStorage(addr common.Address, keys [][]byte) error {
+	// Check if our source supports prefetching via CachedSource
+	cs, ok := f.src.(*CachedSource)
+	if !ok || !cs.SupportsProof() {
+		return nil // No-op if not supported
+	}
+
+	// Convert keys to hashes
+	slots := make([]common.Hash, len(keys))
+	for i, k := range keys {
+		slots[i] = common.BytesToHash(k)
+	}
+
+	return cs.PrefetchStorage(addr, slots)
 }
 
+// PrefetchAccount uses eth_getProof (if available) to batch-fetch account data
+// and populate the cache. This is called by geth's state prefetcher.
 func (f *ForkedAccountsTrie) PrefetchAccount(accounts []common.Address) error {
+	// Check if our source supports prefetching via CachedSource
+	cs, ok := f.src.(*CachedSource)
+	if !ok || !cs.SupportsProof() {
+		return nil // No-op if not supported
+	}
+
+	// Prefetch each account (could parallelize if needed)
+	for _, addr := range accounts {
+		if err := cs.PrefetchAccount(addr); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -103,34 +132,78 @@ func (f *ForkedAccountsTrie) GetAccount(address common.Address) (*types.StateAcc
 		CodeHash: nil,
 	}
 	diffAcc := f.diff.Account[address]
-	if diffAcc != nil && diffAcc.Nonce != nil {
+
+	// Determine what needs to be fetched from source
+	needNonce := diffAcc == nil || diffAcc.Nonce == nil
+	needBalance := diffAcc == nil || diffAcc.Balance == nil
+	needCode := diffAcc == nil || diffAcc.CodeHash == nil
+
+	// Variables to hold fetched values
+	var fetchedNonce uint64
+	var fetchedBalance *uint256.Int
+	var fetchedCode []byte
+	var nonceErr, balanceErr, codeErr error
+
+	// Fetch from source in parallel if needed
+	if needNonce || needBalance || needCode {
+		var wg sync.WaitGroup
+
+		if needNonce {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				fetchedNonce, nonceErr = f.src.Nonce(address)
+			}()
+		}
+
+		if needBalance {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				fetchedBalance, balanceErr = f.src.Balance(address)
+			}()
+		}
+
+		if needCode {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				fetchedCode, codeErr = f.src.Code(address)
+			}()
+		}
+
+		wg.Wait()
+	}
+
+	// Check for errors and assemble the account
+	if needNonce {
+		if nonceErr != nil {
+			return nil, fmt.Errorf("failed to retrieve nonce of account %s: %w", address, nonceErr)
+		}
+		acc.Nonce = fetchedNonce
+	} else {
 		acc.Nonce = *diffAcc.Nonce
-	} else {
-		v, err := f.src.Nonce(address)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve nonce of account %s: %w", address, err)
-		}
-		acc.Nonce = v
 	}
-	if diffAcc != nil && diffAcc.Balance != nil {
+
+	if needBalance {
+		if balanceErr != nil {
+			return nil, fmt.Errorf("failed to retrieve balance of account %s: %w", address, balanceErr)
+		}
+		acc.Balance = new(uint256.Int).Set(fetchedBalance)
+	} else {
 		acc.Balance = new(uint256.Int).Set(diffAcc.Balance)
-	} else {
-		v, err := f.src.Balance(address)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve balance of account %s: %w", address, err)
-		}
-		acc.Balance = new(uint256.Int).Set(v)
 	}
-	if diffAcc != nil && diffAcc.CodeHash != nil {
+
+	if needCode {
+		if codeErr != nil {
+			return nil, fmt.Errorf("failed to retrieve code of account %s: %w", address, codeErr)
+		}
+		acc.CodeHash = crypto.Keccak256Hash(fetchedCode).Bytes()
+	} else {
 		cpy := *diffAcc.CodeHash
 		acc.CodeHash = cpy.Bytes()
-	} else {
-		v, err := f.src.Code(address)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve code of account %s: %w", address, err)
-		}
-		acc.CodeHash = crypto.Keccak256Hash(v).Bytes()
 	}
+
 	return acc, nil
 }
 
