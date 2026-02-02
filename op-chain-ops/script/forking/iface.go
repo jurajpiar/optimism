@@ -50,3 +50,20 @@ type ForkSource interface {
 	// Code returns an empty byte slice, without error, if no code exists.
 	Code(addr common.Address) ([]byte, error)
 }
+
+// AccountProof holds the result of an eth_getProof call
+type AccountProof struct {
+	Nonce    uint64
+	Balance  *uint256.Int
+	CodeHash common.Hash
+	Code     []byte // Optional: populated if code was fetched
+	Storage  map[common.Hash]common.Hash
+}
+
+// ProofSource extends ForkSource with eth_getProof capability for batch fetching
+type ProofSource interface {
+	ForkSource
+	// GetProof fetches account data and multiple storage slots in a single RPC call.
+	// This is much more efficient than individual Nonce/Balance/StorageAt calls.
+	GetProof(addr common.Address, slots []common.Hash) (*AccountProof, error)
+}

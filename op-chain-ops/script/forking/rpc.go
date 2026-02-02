@@ -34,6 +34,7 @@ type RPCSource struct {
 }
 
 var _ ForkSource = (*RPCSource)(nil)
+var _ ProofSource = (*RPCSource)(nil)
 
 func RPCSourceByNumber(urlOrAlias string, cl RPCClient, num uint64) (*RPCSource, error) {
 	src := newRPCSource(urlOrAlias, cl)
@@ -99,7 +100,7 @@ func (r *RPCSource) Nonce(addr common.Address) (uint64, error) {
 		ctx, cancel := context.WithTimeout(r.ctx, r.timeout)
 		defer cancel()
 		var result hexutil.Uint64
-		err := r.client.CallContext(ctx, &result, "eth_getTransactionCount", addr, "latest")
+		err := r.client.CallContext(ctx, &result, "eth_getTransactionCount", addr, r.blockHash)
 		return uint64(result), err
 	})
 }
@@ -109,7 +110,7 @@ func (r *RPCSource) Balance(addr common.Address) (*uint256.Int, error) {
 		ctx, cancel := context.WithTimeout(r.ctx, r.timeout)
 		defer cancel()
 		var result hexutil.U256
-		err := r.client.CallContext(ctx, &result, "eth_getBalance", addr, "latest")
+		err := r.client.CallContext(ctx, &result, "eth_getBalance", addr, r.blockHash)
 		return (*uint256.Int)(&result), err
 	})
 }
@@ -119,7 +120,7 @@ func (r *RPCSource) StorageAt(addr common.Address, key common.Hash) (common.Hash
 		ctx, cancel := context.WithTimeout(r.ctx, r.timeout)
 		defer cancel()
 		var result common.Hash
-		err := r.client.CallContext(ctx, &result, "eth_getStorageAt", addr, key, "latest")
+		err := r.client.CallContext(ctx, &result, "eth_getStorageAt", addr, key, r.blockHash)
 		return result, err
 	})
 }
@@ -129,8 +130,62 @@ func (r *RPCSource) Code(addr common.Address) ([]byte, error) {
 		ctx, cancel := context.WithTimeout(r.ctx, r.timeout)
 		defer cancel()
 		var result hexutil.Bytes
-		err := r.client.CallContext(ctx, &result, "eth_getCode", addr, "latest")
+		err := r.client.CallContext(ctx, &result, "eth_getCode", addr, r.blockHash)
 		return result, err
+	})
+}
+
+// storageProofEntry represents a single storage proof from eth_getProof response
+type storageProofEntry struct {
+	Key   common.Hash  `json:"key"`
+	Value *hexutil.Big `json:"value"`
+}
+
+// proofResponse represents the eth_getProof RPC response
+type proofResponse struct {
+	Balance      *hexutil.Big        `json:"balance"`
+	CodeHash     common.Hash         `json:"codeHash"`
+	Nonce        hexutil.Uint64      `json:"nonce"`
+	StorageHash  common.Hash         `json:"storageHash"`
+	StorageProof []storageProofEntry `json:"storageProof"`
+}
+
+// GetProof fetches account data and multiple storage slots in a single eth_getProof call
+func (r *RPCSource) GetProof(addr common.Address, slots []common.Hash) (*AccountProof, error) {
+	return retry.Do[*AccountProof](r.ctx, r.maxAttempts, r.strategy, func() (*AccountProof, error) {
+		ctx, cancel := context.WithTimeout(r.ctx, r.timeout)
+		defer cancel()
+
+		var result proofResponse
+		err := r.client.CallContext(ctx, &result, "eth_getProof", addr, slots, r.blockHash)
+		if err != nil {
+			return nil, err
+		}
+
+		// Convert response to AccountProof
+		proof := &AccountProof{
+			Nonce:    uint64(result.Nonce),
+			CodeHash: result.CodeHash,
+			Storage:  make(map[common.Hash]common.Hash),
+		}
+
+		// Convert balance
+		if result.Balance != nil {
+			proof.Balance = uint256.MustFromBig(result.Balance.ToInt())
+		} else {
+			proof.Balance = uint256.NewInt(0)
+		}
+
+		// Convert storage proofs to map
+		for _, sp := range result.StorageProof {
+			var value common.Hash
+			if sp.Value != nil {
+				value = common.BigToHash(sp.Value.ToInt())
+			}
+			proof.Storage[sp.Key] = value
+		}
+
+		return proof, nil
 	})
 }
 
