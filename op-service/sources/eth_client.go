@@ -539,6 +539,10 @@ func (s *EthClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	return (*big.Int)(&hex), nil
 }
 
+func (s *EthClient) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	return s.SuggestGasPrice(ctx)
+}
+
 // Call executes a message call transaction but never mined into the blockchain.
 func (s *EthClient) Call(ctx context.Context, msg ethereum.CallMsg, blockNumber rpc.BlockNumber) ([]byte, error) {
 	var hex hexutil.Bytes

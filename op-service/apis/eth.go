@@ -94,6 +94,7 @@ type Gas interface {
 	// SuggestGasPrice retrieves the currently suggested gas price to allow a timely
 	// execution of a transaction.
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
+	SuggestGasTipCap(ctx context.Context) (*big.Int, error)
 
 	// EstimateGas tries to estimate the gas needed to execute a specific transaction.
 	EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error)
