@@ -3,11 +3,13 @@ package sources
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/sources/caching"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -36,6 +38,11 @@ type RPCReceiptsFetcher struct {
 	log log.Logger
 
 	provKind RPCProviderKind
+
+	// chainID is the L1 chain ID, lazily fetched from RPC.
+	// RSK chains (30, 31, 33) use a different receipt trie structure.
+	chainID     uint64
+	chainIDOnce sync.Once
 
 	// availableReceiptMethods tracks which receipt methods can be used for fetching receipts
 	// This may be modified concurrently, but we don't lock since it's a single
@@ -67,6 +74,25 @@ func NewRPCReceiptsFetcher(client rpcClient, log log.Logger, config RPCReceiptsC
 		lastMethodsReset:        time.Now(),
 		methodResetDuration:     config.MethodResetDuration,
 	}
+}
+
+// getChainID lazily fetches and caches the L1 chain ID from the RPC.
+func (f *RPCReceiptsFetcher) getChainID(ctx context.Context) uint64 {
+	f.chainIDOnce.Do(func() {
+		var id hexutil.Big
+		err := f.client.CallContext(ctx, &id, "eth_chainId")
+		if err != nil {
+			if f.log != nil {
+				f.log.Warn("Failed to fetch L1 chain ID for receipt validation", "err", err)
+			}
+			return
+		}
+		f.chainID = id.ToInt().Uint64()
+		if f.log != nil {
+			f.log.Info("Fetched L1 chain ID for receipt validation", "chainID", f.chainID)
+		}
+	})
+	return f.chainID
 }
 
 func (f *RPCReceiptsFetcher) FetchReceipts(ctx context.Context, blockInfo eth.BlockInfo, txHashes []common.Hash) (result types.Receipts, err error) {
@@ -149,7 +175,7 @@ func (f *RPCReceiptsFetcher) FetchReceipts(ctx context.Context, blockInfo eth.Bl
 	// 	}
 	// }
 
-	if err = validateReceipts(block, blockInfo.ReceiptHash(), txHashes, result); err != nil {
+	if err = validateReceiptsWithChainID(block, blockInfo.ReceiptHash(), txHashes, result, f.getChainID(ctx)); err != nil {
 		return nil, err
 	}
 
