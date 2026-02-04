@@ -356,21 +356,15 @@ func (s *EthClient) FetchReceipts(ctx context.Context, blockHash common.Hash) (e
 		return nil, nil, fmt.Errorf("querying block: %w", err)
 	}
 
-	// Filter out remasc transactions (Rootstock special transactions)
-	// These transactions have To address 0x0000000000000000000000000000000001000008
-	validTxHashes := make([]common.Hash, 0, len(txs))
+	txHashes := make([]common.Hash, 0, len(txs))
 	for _, tx := range txs {
 		if tx == nil {
 			continue
 		}
-		// Skip remasc transactions
-		// if *tx.To() == REMASC_CONTRACT_ADDRESS {
-		// 	continue
-		// }
-		validTxHashes = append(validTxHashes, tx.Hash())
+		txHashes = append(txHashes, tx.Hash())
 	}
 
-	receipts, err := s.recProvider.FetchReceipts(ctx, info, validTxHashes)
+	receipts, err := s.recProvider.FetchReceipts(ctx, info, txHashes)
 	if err != nil {
 		return nil, nil, err
 	}

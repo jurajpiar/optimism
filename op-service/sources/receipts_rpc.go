@@ -95,9 +95,28 @@ func (f *RPCReceiptsFetcher) getChainID(ctx context.Context) uint64 {
 	return f.chainID
 }
 
+// rskBlockTxHashes is used to unmarshal just the transaction hashes from an RSK block response
+type rskBlockTxHashes struct {
+	Transactions []common.Hash `json:"transactions"`
+}
+
 func (f *RPCReceiptsFetcher) FetchReceipts(ctx context.Context, blockInfo eth.BlockInfo, txHashes []common.Hash) (result types.Receipts, err error) {
 	// m := f.PickReceiptsMethod(len(txHashes))
 	block := eth.ToBlockID(blockInfo)
+
+	// For RSK chains, fetch transaction hashes directly from RPC instead of using
+	// the computed hashes. RSK uses a different transaction hash calculation than
+	// Ethereum (due to custom RLP encoding for internal transactions like REMASC).
+	chainID := f.getChainID(ctx)
+	if IsRSKChain(chainID) && len(txHashes) > 0 {
+		var blockWithHashes rskBlockTxHashes
+		err = f.client.CallContext(ctx, &blockWithHashes, "eth_getBlockByHash", block.Hash, false)
+		if err != nil {
+			return nil, fmt.Errorf("fetching RSK transaction hashes: %w", err)
+		}
+		txHashes = blockWithHashes.Transactions
+	}
+
 	// switch m {
 	// case EthGetTransactionReceiptBatch:
 	result, err = f.basic.FetchReceipts(ctx, blockInfo, txHashes)
