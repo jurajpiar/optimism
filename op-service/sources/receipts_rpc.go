@@ -3,6 +3,7 @@ package sources
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-service/client"
@@ -38,6 +39,11 @@ type RPCReceiptsFetcher struct {
 
 	provKind RPCProviderKind
 
+	// chainID is the L1 chain ID, lazily fetched from RPC.
+	// RSK chains (30, 31, 33) use a different receipt trie structure.
+	chainID     uint64
+	chainIDOnce sync.Once
+
 	// availableReceiptMethods tracks which receipt methods can be used for fetching receipts
 	// This may be modified concurrently, but we don't lock since it's a single
 	// uint64 that's not critical (fine to miss or mix up a modification)
@@ -70,9 +76,47 @@ func NewRPCReceiptsFetcher(client rpcClient, log log.Logger, config RPCReceiptsC
 	}
 }
 
+// getChainID lazily fetches and caches the L1 chain ID from the RPC.
+func (f *RPCReceiptsFetcher) getChainID(ctx context.Context) uint64 {
+	f.chainIDOnce.Do(func() {
+		var id hexutil.Big
+		err := f.client.CallContext(ctx, &id, "eth_chainId")
+		if err != nil {
+			if f.log != nil {
+				f.log.Warn("Failed to fetch L1 chain ID for receipt validation", "err", err)
+			}
+			return
+		}
+		f.chainID = id.ToInt().Uint64()
+		if f.log != nil {
+			f.log.Info("Fetched L1 chain ID for receipt validation", "chainID", f.chainID)
+		}
+	})
+	return f.chainID
+}
+
+// rskBlockTxHashes is used to unmarshal just the transaction hashes from an RSK block response
+type rskBlockTxHashes struct {
+	Transactions []common.Hash `json:"transactions"`
+}
+
 func (f *RPCReceiptsFetcher) FetchReceipts(ctx context.Context, blockInfo eth.BlockInfo, txHashes []common.Hash) (result types.Receipts, err error) {
 	m := f.PickReceiptsMethod(len(txHashes))
 	block := eth.ToBlockID(blockInfo)
+
+	// For RSK chains, fetch transaction hashes directly from RPC instead of using
+	// the computed hashes. RSK uses a different transaction hash calculation than
+	// Ethereum (due to custom RLP encoding for internal transactions like REMASC).
+	chainID := f.getChainID(ctx)
+	if IsRSKChain(chainID) && len(txHashes) > 0 {
+		var blockWithHashes rskBlockTxHashes
+		err = f.client.CallContext(ctx, &blockWithHashes, "eth_getBlockByHash", block.Hash, false)
+		if err != nil {
+			return nil, fmt.Errorf("fetching RSK transaction hashes: %w", err)
+		}
+		txHashes = blockWithHashes.Transactions
+	}
+
 	switch m {
 	case EthGetTransactionReceiptBatch:
 		result, err = f.basic.FetchReceipts(ctx, blockInfo, txHashes)
@@ -105,7 +149,7 @@ func (f *RPCReceiptsFetcher) FetchReceipts(ctx context.Context, blockInfo eth.Bl
 		return nil, err
 	}
 
-	if err = validateReceipts(block, blockInfo.ReceiptHash(), txHashes, result); err != nil {
+	if err = validateReceiptsWithChainID(block, blockInfo.ReceiptHash(), txHashes, result, chainID); err != nil {
 		return nil, err
 	}
 
