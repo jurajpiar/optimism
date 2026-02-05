@@ -106,7 +106,8 @@ contract DeployOPChain_TestBase is Test, FeatureFlags {
                 superchainProxyAdmin: dso.superchainProxyAdmin,
                 l1ProxyAdminOwner: dso.superchainProxyAdmin.owner(),
                 challenger: challenger,
-                devFeatureBitmap: devFeatureBitmap
+                devFeatureBitmap: devFeatureBitmap,
+                skipFaultProofs: false
             })
         );
         // Select OPCM v1 or v2 based on feature flag
