@@ -1,7 +1,6 @@
 package sources
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -12,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/ethereum/go-ethereum/rsk"
 
 	"github.com/ethereum-optimism/optimism/op-core/predeploys"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -131,11 +130,15 @@ func (hdr *RPCHeader) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInfo
 			return nil, err
 		}
 	}
-	if !trustCache {
-		if computed := hdr.computeBlockHash(); computed != hdr.Hash {
-			return nil, fmt.Errorf("failed to verify block hash: computed %s but RPC said %s", computed, hdr.Hash)
-		}
-	}
+	// Note: Block hash verification is skipped for RSK because RSK uses a different
+	// block hash computation (RSKIP92 encoding, UMM root, etc.). Since we trust the
+	// RSK RPC, we rely on the hash provided by the RPC.
+	// Original code (for Ethereum):
+	// if !trustCache {
+	//     if computed := hdr.computeBlockHash(); computed != hdr.Hash {
+	//         return nil, fmt.Errorf("failed to verify block hash: computed %s but RPC said %s", computed, hdr.Hash)
+	//     }
+	// }
 	return eth.HeaderBlockInfoTrusted(hdr.Hash, hdr.CreateGethHeader()), nil
 }
 
@@ -153,15 +156,17 @@ type RPCBlock struct {
 }
 
 func (block *RPCBlock) Verify() error {
-	if computed := block.computeBlockHash(); computed != block.Hash {
-		return fmt.Errorf("failed to verify block hash: computed %s but RPC said %s", computed, block.Hash)
-	}
+	// Note: Block hash verification is skipped for RSK because RSK uses a different
+	// block hash computation (RSKIP92 encoding, UMM root, etc.). Since we trust the
+	// RSK RPC, we rely on the hash provided by the RPC.
+	// TODO: Implement RSK block hash verification if needed using gorsk/rskblocks.ComputeBlockHash
 	for i, tx := range block.Transactions {
 		if tx == nil {
 			return fmt.Errorf("block tx %d is nil", i)
 		}
 	}
-	if computed := types.DeriveSha(types.Transactions(block.Transactions), trie.NewStackTrie(nil)); block.TxHash != computed {
+	// Use RSK's Unitrie for transaction root validation
+	if computed := rsk.CalculateTxRoot(block.Transactions); block.TxHash != computed {
 		return fmt.Errorf("failed to verify transactions list: computed %s but RPC said %s", computed, block.TxHash)
 	}
 
@@ -183,22 +188,12 @@ func (block *RPCBlock) Verify() error {
 }
 
 func (block *RPCBlock) validateL1Withdrawals(withdrawals *types.Withdrawals, withdrawalsRoot *common.Hash) error {
+	// RSK is a pre-merge chain and doesn't have withdrawals (EIP-4895).
+	// Skip withdrawal validation for RSK L1 blocks.
+	// For RSK, withdrawalsRoot should always be nil.
 	if withdrawalsRoot != nil {
-		if withdrawals == nil {
-			return errors.New("expected withdrawals")
-		}
-		for i, w := range *withdrawals {
-			if w == nil {
-				return fmt.Errorf("block withdrawal %d is null", i)
-			}
-		}
-		if computed := types.DeriveSha(*withdrawals, trie.NewStackTrie(nil)); *withdrawalsRoot != computed {
-			return fmt.Errorf("failed to verify withdrawals list: computed %s but RPC said %s", computed, withdrawalsRoot)
-		}
-	} else {
-		if withdrawals != nil {
-			return fmt.Errorf("expected no withdrawals due to missing withdrawals-root, but got %d", len(*withdrawals))
-		}
+		// This shouldn't happen for RSK, but log a warning-level error if it does
+		return fmt.Errorf("RSK L1 block has unexpected withdrawalsRoot: %s", withdrawalsRoot)
 	}
 	return nil
 }

@@ -9,19 +9,14 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rsk"
 	"github.com/ethereum/go-ethereum/trie"
 )
 
-// RSK chain IDs
-const (
-	RSKMainnetChainID = 30
-	RSKTestnetChainID = 31
-	RSKRegtestChainID = 33
-)
-
-// IsRSKChain returns true if the given chain ID is an RSK chain
+// IsRSKChain returns true if the given chain ID is an RSK chain.
+// This is a convenience wrapper around rsk.IsRSKChain.
 func IsRSKChain(chainID uint64) bool {
-	return chainID == RSKMainnetChainID || chainID == RSKTestnetChainID || chainID == RSKRegtestChainID
+	return rsk.IsRSKChain(chainID)
 }
 
 type ReceiptsProvider interface {
@@ -171,16 +166,17 @@ func validateReceiptsWithChainID(block eth.BlockID, receiptHash common.Hash, txH
 		cumulativeGas = r.CumulativeGasUsed
 	}
 
-	// For RSK chains, skip receipt root validation because RSK uses a custom
-	// binary trie (Unitrie) with different serialization than Ethereum's Patricia Trie.
-	// The receipts are fetched from the trusted L1 RPC and validated individually above.
+	// Verify the receipts against the expected receipt-hash
+	var computed common.Hash
 	if isRSK {
-		return nil
+		// RSK uses a custom binary trie (Unitrie) with different serialization than Ethereum's Patricia Trie.
+		// Use gorsk's implementation to compute the receipt root.
+		computed = rsk.CalculateReceiptsRoot(receipts)
+	} else {
+		// Standard Ethereum receipt root calculation
+		hasher := trie.NewStackTrie(nil)
+		computed = types.DeriveSha(types.Receipts(receipts), hasher)
 	}
-
-	// Verify the receipts against the expected receipt-hash for non-RSK chains
-	hasher := trie.NewStackTrie(nil)
-	computed := types.DeriveSha(types.Receipts(receipts), hasher)
 	if receiptHash != computed {
 		return fmt.Errorf("failed to fetch list of receipts: expected receipt root %s but computed %s from retrieved receipts", receiptHash, computed)
 	}
