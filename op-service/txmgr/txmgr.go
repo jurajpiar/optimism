@@ -456,6 +456,15 @@ func (m *SimpleTxManager) craftTx(ctx context.Context, candidate TxCandidate) (*
 			return nil, fmt.Errorf("failed to create blob transaction: %w", err)
 		}
 		txMessage = message
+	} else if m.cfg.UseLegacyTx {
+		// Legacy (type 0) transaction for chains that don't support EIP-1559
+		txMessage = &types.LegacyTx{
+			To:       candidate.To,
+			GasPrice: gasFeeCap, // Use gasFeeCap as the legacy gas price
+			Value:    candidate.Value,
+			Data:     candidate.TxData,
+			Gas:      candidate.GasLimit,
+		}
 	} else {
 		txMessage = &types.DynamicFeeTx{
 			ChainID:   m.chainID,
@@ -647,6 +656,8 @@ func (m *SimpleTxManager) signWithNextNonce(ctx context.Context, txMessage types
 	}
 
 	switch x := txMessage.(type) {
+	case *types.LegacyTx:
+		x.Nonce = *m.nonce
 	case *types.DynamicFeeTx:
 		x.Nonce = *m.nonce
 	case *types.BlobTx:
@@ -1041,6 +1052,15 @@ func (m *SimpleTxManager) increaseGasPrice(ctx context.Context, tx *types.Transa
 			return nil, err
 		}
 		newTx = types.NewTx(message)
+	} else if tx.Type() == types.LegacyTxType {
+		newTx = types.NewTx(&types.LegacyTx{
+			Nonce:    tx.Nonce(),
+			To:       tx.To(),
+			GasPrice: bumpedFee, // Use gasFeeCap as legacy gas price
+			Value:    tx.Value(),
+			Data:     tx.Data(),
+			Gas:      gas,
+		})
 	} else {
 		newTx = types.NewTx(&types.DynamicFeeTx{
 			ChainID:   tx.ChainId(),
