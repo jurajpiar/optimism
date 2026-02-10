@@ -340,7 +340,13 @@ type CLIConfig struct {
 	TxNotInMempoolTimeout      time.Duration
 	AlreadyPublishedCustomErrs []string
 	CellProofTime              uint64
-	BlobTipCapDynamic          bool
+	// GasPriceEstimatorFn overrides the default gas price estimator.
+	// Useful for L1 chains that don't support EIP-4844 (eth_blobBaseFee) or EIP-1559 (eth_maxPriorityFeePerGas).
+	GasPriceEstimatorFn GasPriceEstimatorFn
+	// UseLegacyTx forces the txmgr to create legacy (type 0) transactions instead of EIP-1559 (type 2).
+	// Required for L1 chains that don't support EIP-1559 transaction types (e.g. RSK).
+	UseLegacyTx       bool
+	BlobTipCapDynamic bool
 	BlobTipCapPercentile       int
 	BlobTipCapRange            int
 }
@@ -544,6 +550,8 @@ func NewConfig(cfg CLIConfig, l log.Logger) (*Config, error) {
 		SafeAbortNonceTooLowCount:  cfg.SafeAbortNonceTooLowCount,
 		AlreadyPublishedCustomErrs: cfg.AlreadyPublishedCustomErrs,
 		CellProofTime:              cellProofTime,
+		GasPriceEstimatorFn:        cfg.GasPriceEstimatorFn,
+		UseLegacyTx:                cfg.UseLegacyTx,
 	}
 
 	if cfg.BlobTipCapDynamic {
@@ -667,6 +675,9 @@ type Config struct {
 	// GasPriceEstimatorFn is used to estimate the gas price for a transaction.
 	// If nil, DefaultGasPriceEstimatorFn is used.
 	GasPriceEstimatorFn GasPriceEstimatorFn
+
+	// UseLegacyTx forces legacy (type 0) transactions instead of EIP-1559 (type 2).
+	UseLegacyTx bool
 
 	// List of custom RPC error messages that indicate that a transaction has
 	// already been published.
