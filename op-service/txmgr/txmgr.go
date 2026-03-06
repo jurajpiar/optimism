@@ -839,7 +839,7 @@ func (m *SimpleTxManager) publishTx(ctx context.Context, tx *types.Transaction, 
 			l.Warn("resubmitted already known transaction", "err", err)
 			m.metr.TxPublished("tx_already_known")
 			return tx, true, nil
-		case errStringMatch(err, txpool.ErrReplaceUnderpriced):
+		case errStringMatch(err, txpool.ErrReplaceUnderpriced) || errContains(err, "gas price not enough to bump transaction"):
 			l.Warn("transaction replacement is underpriced", "err", err)
 			m.metr.TxPublished("tx_replacement_underpriced")
 			// retry tx with fee bump, unless we already just tried to bump them
@@ -1273,6 +1273,11 @@ func errStringMatch(err, target error) bool {
 		return false
 	}
 	return strings.Contains(err.Error(), target.Error())
+}
+
+// errContains returns true if err is non-nil and err.Error() contains substr.
+func errContains(err error, substr string) bool {
+	return err != nil && strings.Contains(err.Error(), substr)
 }
 
 func errStringContainsAny(err error, targets []string) bool {
