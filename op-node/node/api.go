@@ -44,6 +44,7 @@ type driverClient interface {
 
 type SafeDBReader interface {
 	SafeHeadAtL1(ctx context.Context, l1BlockNum uint64) (l1 eth.BlockID, l2 eth.BlockID, err error)
+	LatestSafeHead(ctx context.Context) (l1 eth.BlockID, l2 eth.BlockID, err error)
 }
 
 type adminAPI struct {

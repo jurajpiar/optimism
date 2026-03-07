@@ -86,6 +86,12 @@ type OriginSelectorForceResetter interface {
 	ResetOrigins()
 }
 
+// SafeHeadReader provides access to a persisted safe head database.
+// Used on startup to restore the safe head without re-deriving from finalized.
+type SafeHeadReader interface {
+	LatestSafeHead(ctx context.Context) (l1 eth.BlockID, l2 eth.BlockID, err error)
+}
+
 // CrossUpdateHandler handles both cross-unsafe and cross-safe L2 head changes.
 // Nil check required because op-program omits this handler.
 type CrossUpdateHandler interface {
@@ -157,6 +163,9 @@ type EngineController struct {
 
 	// Handler for cross-unsafe and cross-safe updates
 	crossUpdateHandler CrossUpdateHandler
+
+	// Optional persisted safe head database for faster startup
+	safeHeadReader SafeHeadReader
 
 	unsafePayloads *PayloadsQueue // queue of unsafe payloads, ordered by ascending block number, may have gaps and duplicates
 }
@@ -290,6 +299,10 @@ func (e *EngineController) SetCrossUpdateHandler(handler CrossUpdateHandler) {
 	e.crossUpdateHandler = handler
 }
 
+func (e *EngineController) SetSafeHeadReader(reader SafeHeadReader) {
+	e.safeHeadReader = reader
+}
+
 func (e *EngineController) onUnsafeUpdate(ctx context.Context, crossUnsafe, localUnsafe eth.L2BlockRef) {
 	// Nil check required because op-program omits this handler.
 	if e.crossUpdateHandler != nil {
@@ -406,18 +419,22 @@ func (e *EngineController) initializeUnknowns(ctx context.Context) error {
 		e.log.Info("Loaded initial finalized block ref", "finalized", finalizedRef)
 	}
 	if e.safeHead == (eth.L2BlockRef{}) {
-		ref, err := e.engine.L2BlockRefByLabel(ctx, eth.Safe)
-		if err != nil {
-			if errors.Is(err, ethereum.NotFound) {
-				// If the engine doesn't have a safe head, then we can use the finalized head
-				e.SetSafeHead(finalizedRef)
-				e.log.Info("Loaded initial cross-safe block from finalized", "cross_safe", finalizedRef)
-			} else {
-				return fmt.Errorf("failed to load cross-safe head: %w", err)
-			}
+		if resolved := e.tryLoadSafeHeadFromDB(ctx); resolved != (eth.L2BlockRef{}) {
+			e.SetSafeHead(resolved)
+			e.log.Info("Restored safe head from safedb", "cross_safe", resolved)
 		} else {
-			e.SetSafeHead(ref)
-			e.log.Info("Loaded initial cross-safe block ref", "cross_safe", ref)
+			ref, err := e.engine.L2BlockRefByLabel(ctx, eth.Safe)
+			if err != nil {
+				if errors.Is(err, ethereum.NotFound) {
+					e.SetSafeHead(finalizedRef)
+					e.log.Info("Loaded initial cross-safe block from finalized", "cross_safe", finalizedRef)
+				} else {
+					return fmt.Errorf("failed to load cross-safe head: %w", err)
+				}
+			} else {
+				e.SetSafeHead(ref)
+				e.log.Info("Loaded initial cross-safe block ref", "cross_safe", ref)
+			}
 		}
 	}
 	if e.crossUnsafeHead == (eth.L2BlockRef{}) {
@@ -429,6 +446,31 @@ func (e *EngineController) initializeUnknowns(ctx context.Context) error {
 		e.log.Info("Set initial local-safe block ref to match cross-safe", "local_safe", e.safeHead)
 	}
 	return nil
+}
+
+// tryLoadSafeHeadFromDB attempts to restore the safe head from the persisted safedb.
+// Returns a zero L2BlockRef if the safedb is unavailable, empty, or the referenced
+// block cannot be resolved in the engine (e.g. EL datadir was wiped independently).
+func (e *EngineController) tryLoadSafeHeadFromDB(ctx context.Context) eth.L2BlockRef {
+	if e.safeHeadReader == nil {
+		return eth.L2BlockRef{}
+	}
+	_, l2ID, err := e.safeHeadReader.LatestSafeHead(ctx)
+	if err != nil {
+		e.log.Debug("SafeDB has no persisted safe head, falling back to engine", "err", err)
+		return eth.L2BlockRef{}
+	}
+	ref, err := e.engine.L2BlockRefByHash(ctx, l2ID.Hash)
+	if err != nil {
+		e.log.Warn("SafeDB safe head not found in engine, falling back", "l2", l2ID, "err", err)
+		return eth.L2BlockRef{}
+	}
+	if ref.Number < e.finalizedHead.Number || ref.Number > e.unsafeHead.Number {
+		e.log.Warn("SafeDB safe head outside valid range, falling back",
+			"safedb_safe", ref.Number, "finalized", e.finalizedHead.Number, "unsafe", e.unsafeHead.Number)
+		return eth.L2BlockRef{}
+	}
+	return ref
 }
 
 func (e *EngineController) tryUpdateEngineInternal(ctx context.Context) error {

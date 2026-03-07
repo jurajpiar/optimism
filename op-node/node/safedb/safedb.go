@@ -185,6 +185,28 @@ func (d *SafeDB) SafeHeadAtL1(ctx context.Context, l1BlockNum uint64) (l1Block e
 	return
 }
 
+// LatestSafeHead returns the most recently recorded L2 safe head and the L1 block
+// that made it safe. Returns ErrNotFound if the database is empty.
+func (d *SafeDB) LatestSafeHead(ctx context.Context) (l1Block eth.BlockID, safeHead eth.BlockID, err error) {
+	d.m.RLock()
+	defer d.m.RUnlock()
+	iter, err := d.db.NewIterWithContext(ctx, safeByL1BlockNumKey.IterRange())
+	if err != nil {
+		return
+	}
+	defer iter.Close()
+	if valid := iter.Last(); !valid {
+		err = ErrNotFound
+		return
+	}
+	val, err := iter.ValueAndErr()
+	if err != nil {
+		return
+	}
+	l1Block, safeHead, err = decodeSafeByL1BlockNum(iter.Key(), val)
+	return
+}
+
 func (d *SafeDB) Close() error {
 	d.m.Lock()
 	defer d.m.Unlock()
