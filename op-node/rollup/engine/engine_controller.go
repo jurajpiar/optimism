@@ -473,6 +473,36 @@ func (e *EngineController) tryLoadSafeHeadFromDB(ctx context.Context) eth.L2Bloc
 	return ref
 }
 
+// overrideSafeFromDB returns the safedb safe head if it is strictly better
+// (higher block number) than the candidate from FindL2Heads, and still within
+// the valid [finalized, unsafe] range. Otherwise it returns the candidate as-is.
+func (e *EngineController) overrideSafeFromDB(ctx context.Context, candidate, unsafe eth.L2BlockRef) eth.L2BlockRef {
+	if e.safeHeadReader == nil {
+		return candidate
+	}
+	_, l2ID, err := e.safeHeadReader.LatestSafeHead(ctx)
+	if err != nil {
+		return candidate
+	}
+	if l2ID.Number <= candidate.Number {
+		return candidate
+	}
+	ref, err := e.engine.L2BlockRefByHash(ctx, l2ID.Hash)
+	if err != nil {
+		e.log.Warn("SafeDB safe head not found in engine during reset, keeping FindL2Heads result",
+			"safedb", l2ID, "candidate", candidate, "err", err)
+		return candidate
+	}
+	if ref.Number > unsafe.Number {
+		e.log.Warn("SafeDB safe head beyond unsafe, keeping FindL2Heads result",
+			"safedb_safe", ref.Number, "unsafe", unsafe.Number)
+		return candidate
+	}
+	e.log.Info("Overriding FindL2Heads safe head with safedb value",
+		"findl2heads_safe", candidate, "safedb_safe", ref)
+	return ref
+}
+
 func (e *EngineController) tryUpdateEngineInternal(ctx context.Context) error {
 	if !e.needFCUCall {
 		return ErrNoFCUNeeded
@@ -1090,6 +1120,7 @@ func (e *EngineController) onResetEngineRequest(ctx context.Context) {
 		})
 		return
 	}
+	result.Safe = e.overrideSafeFromDB(ctx, result.Safe, result.Unsafe)
 	e.forceReset(ctx, result.Unsafe, result.Unsafe, result.Safe, result.Safe, result.Finalized, false)
 }
 
