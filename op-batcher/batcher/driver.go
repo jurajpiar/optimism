@@ -231,6 +231,13 @@ func (l *BatchSubmitter) StopBatchSubmittingIfRunning(ctx context.Context) error
 	return err
 }
 
+// IsActive returns whether the batcher is currently running.
+func (l *BatchSubmitter) IsActive() bool {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+	return l.running
+}
+
 // StopBatchSubmitting stops the batch-submitter loop, and force-kills if the provided ctx is done.
 func (l *BatchSubmitter) StopBatchSubmitting(ctx context.Context) error {
 	l.Log.Info("Stopping Batch Submitter")

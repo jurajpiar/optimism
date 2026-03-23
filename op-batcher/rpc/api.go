@@ -15,6 +15,7 @@ import (
 type BatcherDriver interface {
 	StartBatchSubmitting() error
 	StopBatchSubmitting(ctx context.Context) error
+	IsActive() bool
 	Flush(ctx context.Context) error
 	SetThrottleController(controllerType config.ThrottleControllerType, pidConfig *config.PIDConfig) error
 	GetThrottleControllerInfo() (config.ThrottleControllerInfo, error)
@@ -48,6 +49,10 @@ func (a *adminAPI) StartBatcher(_ context.Context) error {
 
 func (a *adminAPI) StopBatcher(ctx context.Context) error {
 	return a.b.StopBatchSubmitting(ctx)
+}
+
+func (a *adminAPI) ActiveBatcher(_ context.Context) bool {
+	return a.b.IsActive()
 }
 
 // SetThrottleController changes only the throttle controller type without changing parameters
