@@ -2,6 +2,7 @@ package txmgr
 
 import (
 	"context"
+	"errors"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum"
@@ -72,6 +73,22 @@ func (r *RateLimitedBackend) SuggestGasTipCap(ctx context.Context) (*big.Int, er
 		return nil, err
 	}
 	return r.inner.SuggestGasTipCap(ctx)
+}
+
+// SuggestGasPrice delegates to the inner backend when it supports legacy gas
+// price (eth_gasPrice). This lets DefaultGasPriceEstimatorFn fall back on
+// pre-EIP-1559 L1s after SuggestGasTipCap fails; without this method,
+// RateLimitedBackend would not satisfy gasPriceSuggester and only the tip-cap
+// error (e.g. "method not found") would surface.
+func (r *RateLimitedBackend) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
+	if err := r.wait(ctx); err != nil {
+		return nil, err
+	}
+	gps, ok := r.inner.(gasPriceSuggester)
+	if !ok {
+		return nil, errors.New("wrapped L1 backend does not support SuggestGasPrice")
+	}
+	return gps.SuggestGasPrice(ctx)
 }
 
 func (r *RateLimitedBackend) BlobBaseFee(ctx context.Context) (*big.Int, error) {
