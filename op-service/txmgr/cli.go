@@ -51,6 +51,7 @@ const (
 	BlobTipCapDynamicFlagName          = "txmgr.blob-tip-cap-dynamic"
 	BlobTipCapPercentileFlagName       = "txmgr.blob-tip-cap-percentile"
 	BlobTipCapRangeFlagName            = "txmgr.blob-tip-cap-range"
+	UseLegacyTxFlagName                = "txmgr.use-legacy-tx"
 )
 
 var (
@@ -182,6 +183,11 @@ func CLIFlagsWithDefaultsAndBTO(envPrefix string, defaults DefaultFlagValues) []
 			Usage:   "Number of recent blocks to analyze for blob tip cap distribution. Only used when blob-tip-cap-dynamic is enabled.",
 			EnvVars: prefixEnvVars("TXMGR_BLOB_TIP_CAP_RANGE"),
 			Value:   defaults.BlobTipCapRange,
+		},
+		&cli.BoolFlag{
+			Name:    UseLegacyTxFlagName,
+			Usage:   "Force legacy (type 0) transactions instead of EIP-1559 (type 2). Required for L1 chains that don't support EIP-1559.",
+			EnvVars: prefixEnvVars("TXMGR_USE_LEGACY_TX"),
 		},
 	)
 }
@@ -467,6 +473,7 @@ func ReadCLIConfig(ctx cliiface.Context) CLIConfig {
 		BlobTipCapDynamic:          ctx.Bool(BlobTipCapDynamicFlagName),
 		BlobTipCapPercentile:       ctx.Int(BlobTipCapPercentileFlagName),
 		BlobTipCapRange:            ctx.Int(BlobTipCapRangeFlagName),
+		UseLegacyTx:                ctx.Bool(UseLegacyTxFlagName),
 	}
 }
 
