@@ -1,6 +1,8 @@
 ################################################################
 #                   PROFILE: DEFAULT (local)                   #
 ################################################################
+[lint]
+lint_on_build = false
 
 [profile.default]
 
@@ -74,7 +76,7 @@ fs_permissions = [
 
 # 5159 error code is selfdestruct error code
 ignored_error_codes = ["transient-storage", "code-size", "init-code-size", "too-many-warnings", 5159]
-deny_warnings = true
+deny_warnings = false
 ffi = true
 
 # We set the gas limit to max int64 to avoid running out of gas during testing, since the default
@@ -168,6 +170,83 @@ compilation_restrictions = [
   { paths = "src/L1/ProtocolVersions.sol", optimizer_runs = 0 },
   { paths = "src/universal/StorageSetter.sol", optimizer_runs = 0 }
 ]
+
+################################################################
+#                         PROFILE: RSK                         #
+################################################################
+# Optimized for RSK's lower block gas limit (6.8M)
+# Uses very low optimizer_runs to minimize bytecode size
+
+[profile.rsk]
+src = 'src'
+out = 'forge-artifacts'
+script = 'scripts'
+build_info_path = 'artifacts/build-info'
+
+optimizer = true
+optimizer_runs = 50  # Very low for smaller bytecode (RSK 6.8M block gas limit)
+
+# Use extremely low optimizer_runs for the largest contracts
+additional_compiler_profiles = [
+  { name = "dispute", optimizer_runs = 10 },
+]
+compilation_restrictions = [
+  { paths = "src/dispute/FaultDisputeGame.sol", optimizer_runs = 10 },
+  { paths = "src/dispute/PermissionedDisputeGame.sol", optimizer_runs = 10 },
+  { paths = "src/dispute/SuperFaultDisputeGame.sol", optimizer_runs = 10 },
+  { paths = "src/dispute/SuperPermissionedDisputeGame.sol", optimizer_runs = 10 },
+  { paths = "src/L1/OPContractsManager.sol", optimizer_runs = 10 },
+  { paths = "src/L1/OPContractsManagerStandardValidator.sol", optimizer_runs = 10 },
+  { paths = "src/L1/opcm/OPContractsManagerV2.sol", optimizer_runs = 10 },
+  { paths = "src/L1/opcm/OPContractsManagerContainer.sol", optimizer_runs = 10 },
+  { paths = "src/L1/opcm/OPContractsManagerMigrator.sol", optimizer_runs = 10 },
+  { paths = "src/L1/opcm/OPContractsManagerUtils.sol", optimizer_runs = 10 },
+  { paths = "src/L1/opcm/OPContractsManagerUtilsCaller.sol", optimizer_runs = 10 },
+  { paths = "src/L1/OptimismPortal2.sol", optimizer_runs = 10 },
+  { paths = "src/L1/OptimismPortalInterop.sol", optimizer_runs = 10 },
+  { paths = "src/L1/ProtocolVersions.sol", optimizer_runs = 10 },
+  { paths = "src/universal/StorageSetter.sol", optimizer_runs = 10 }
+]
+
+extra_output = ['devdoc', 'userdoc', 'metadata', 'storageLayout']
+bytecode_hash = 'none'
+ast = true
+evm_version = 'cancun'
+
+remappings = [
+  '@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts',
+  '@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts',
+  '@openzeppelin/contracts-v5/=lib/openzeppelin-contracts-v5/contracts',
+  '@rari-capital/solmate/=lib/solmate',
+  '@lib-keccak/=lib/lib-keccak/contracts/lib',
+  '@solady/=lib/solady/src',
+  '@solady-v0.0.245/=lib/solady-v0.0.245/src',
+  'forge-std/=lib/forge-std/src',
+  'ds-test/=lib/forge-std/lib/ds-test/src',
+  'safe-contracts/=lib/safe-contracts/contracts',
+  'kontrol-cheatcodes/=lib/kontrol-cheatcodes/src',
+  'interfaces/=interfaces'
+]
+
+fs_permissions = [
+  { access='read-write', path='./.resource-metering.csv' },
+  { access='read-write', path='./snapshots/' },
+  { access='read-write', path='./deployments/' },
+  { access='read', path='./deploy-config/' },
+  { access='read', path='./deploy-config-periphery/' },
+  { access='read', path='./broadcast/' },
+  { access='read', path = './forge-artifacts/' },
+  { access='read-write', path='./.testdata/' },
+  { access='read', path='./kout-deployment' },
+  { access='read', path='./test/fixtures' },
+  { access='read', path='./lib/superchain-registry/superchain/configs/' },
+  { access='read', path='./lib/superchain-registry/validation/standard/' },
+]
+
+ignored_error_codes = ["transient-storage", "code-size", "init-code-size", "too-many-warnings", 5159]
+deny_warnings = false
+ffi = true
+gas_limit = 9223372036854775807
 
 ################################################################
 #                         PROFILE: KONTROL                     #

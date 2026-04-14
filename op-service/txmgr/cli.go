@@ -51,6 +51,7 @@ const (
 	BlobTipCapDynamicFlagName          = "txmgr.blob-tip-cap-dynamic"
 	BlobTipCapPercentileFlagName       = "txmgr.blob-tip-cap-percentile"
 	BlobTipCapRangeFlagName            = "txmgr.blob-tip-cap-range"
+	UseLegacyTxFlagName                = "txmgr.use-legacy-tx"
 )
 
 var (
@@ -182,6 +183,11 @@ func CLIFlagsWithDefaultsAndBTO(envPrefix string, defaults DefaultFlagValues) []
 			Usage:   "Number of recent blocks to analyze for blob tip cap distribution. Only used when blob-tip-cap-dynamic is enabled.",
 			EnvVars: prefixEnvVars("TXMGR_BLOB_TIP_CAP_RANGE"),
 			Value:   defaults.BlobTipCapRange,
+		},
+		&cli.BoolFlag{
+			Name:    UseLegacyTxFlagName,
+			Usage:   "Force legacy (type 0) transactions instead of EIP-1559 (type 2). Required for L1 chains that don't support EIP-1559.",
+			EnvVars: prefixEnvVars("TXMGR_USE_LEGACY_TX"),
 		},
 	)
 }
@@ -340,9 +346,21 @@ type CLIConfig struct {
 	TxNotInMempoolTimeout      time.Duration
 	AlreadyPublishedCustomErrs []string
 	CellProofTime              uint64
+	// GasPriceEstimatorFn overrides the default gas price estimator.
+	// Useful for L1 chains that don't support EIP-4844 (eth_blobBaseFee) or EIP-1559 (eth_maxPriorityFeePerGas).
+	GasPriceEstimatorFn GasPriceEstimatorFn
+	// UseLegacyTx forces the txmgr to create legacy (type 0) transactions instead of EIP-1559 (type 2).
+	// Required for L1 chains that don't support EIP-1559 transaction types (e.g. RSK).
+	UseLegacyTx       bool
 	BlobTipCapDynamic          bool
 	BlobTipCapPercentile       int
 	BlobTipCapRange            int
+	// L1RPCRateLimit caps the sustained RPC request rate (requests/second)
+	// to the L1 backend via a token-bucket limiter. 0 disables rate limiting.
+	L1RPCRateLimit float64
+	// L1RPCBurst sets the token-bucket burst size for the rate limiter.
+	// Ignored when L1RPCRateLimit is 0. Defaults to 10 if unset.
+	L1RPCBurst int
 }
 
 func NewCLIConfig(l1RPCURL string, defaults DefaultFlagValues) CLIConfig {
@@ -461,7 +479,32 @@ func ReadCLIConfig(ctx cliiface.Context) CLIConfig {
 		BlobTipCapDynamic:          ctx.Bool(BlobTipCapDynamicFlagName),
 		BlobTipCapPercentile:       ctx.Int(BlobTipCapPercentileFlagName),
 		BlobTipCapRange:            ctx.Int(BlobTipCapRangeFlagName),
+		UseLegacyTx:                ctx.Bool(UseLegacyTxFlagName),
 	}
+}
+
+// queryL1BlockTime samples the last 10 L1 blocks to compute the average
+// inter-block duration. Returns 12s (Ethereum default) if the query fails
+// or the chain is too young.
+func queryL1BlockTime(ctx context.Context, client ETHBackend, timeout time.Duration) time.Duration {
+	const fallback = 12 * time.Second
+	ctx1, cancel1 := context.WithTimeout(ctx, timeout)
+	defer cancel1()
+	latest, err := client.HeaderByNumber(ctx1, nil)
+	if err != nil || latest.Number.Uint64() < 10 {
+		return fallback
+	}
+	ctx2, cancel2 := context.WithTimeout(ctx, timeout)
+	defer cancel2()
+	older, err := client.HeaderByNumber(ctx2, new(big.Int).Sub(latest.Number, big.NewInt(10)))
+	if err != nil {
+		return fallback
+	}
+	avg := (latest.Time - older.Time) / 10
+	if avg < 1 {
+		avg = 1
+	}
+	return time.Duration(avg) * time.Second
 }
 
 func NewConfig(cfg CLIConfig, l log.Logger) (*Config, error) {
@@ -528,8 +571,20 @@ func NewConfig(cfg CLIConfig, l log.Logger) (*Config, error) {
 
 	cellProofTime := fallbackToOsakaCellProofTimeIfKnown(chainID, cfg.CellProofTime)
 
+	var backend ETHBackend = l1
+	if cfg.L1RPCRateLimit > 0 {
+		burst := cfg.L1RPCBurst
+		if burst <= 0 {
+			burst = 10
+		}
+		backend = NewRateLimitedBackend(l1, cfg.L1RPCRateLimit, burst)
+	}
+
+	l1BlockTime := queryL1BlockTime(context.Background(), backend, cfg.NetworkTimeout)
+	l.Info("Measured L1 block time", "block_time", l1BlockTime)
+
 	res := Config{
-		Backend: l1,
+		Backend: backend,
 		ChainID: chainID,
 		Signer:  signerFactory(chainID),
 		From:    from,
@@ -544,6 +599,9 @@ func NewConfig(cfg CLIConfig, l log.Logger) (*Config, error) {
 		SafeAbortNonceTooLowCount:  cfg.SafeAbortNonceTooLowCount,
 		AlreadyPublishedCustomErrs: cfg.AlreadyPublishedCustomErrs,
 		CellProofTime:              cellProofTime,
+		L1BlockTime:                l1BlockTime,
+		GasPriceEstimatorFn:        cfg.GasPriceEstimatorFn,
+		UseLegacyTx:                cfg.UseLegacyTx,
 	}
 
 	if cfg.BlobTipCapDynamic {
@@ -668,12 +726,21 @@ type Config struct {
 	// If nil, DefaultGasPriceEstimatorFn is used.
 	GasPriceEstimatorFn GasPriceEstimatorFn
 
+	// UseLegacyTx forces legacy (type 0) transactions instead of EIP-1559 (type 2).
+	UseLegacyTx bool
+
 	// List of custom RPC error messages that indicate that a transaction has
 	// already been published.
 	AlreadyPublishedCustomErrs []string
 
 	// CellProofTime is the time at which cell proofs are enabled in blob transaction (for Fusaka (EIP-7742) compatibility).
 	CellProofTime uint64
+
+	// L1BlockTime is the average L1 block interval measured at startup.
+	// Used as the retry delay when prepare() encounters a contract revert,
+	// since contract state only changes with new L1 blocks.
+	// Falls back to 12s if the startup query fails.
+	L1BlockTime time.Duration
 
 	// BlobTipCapDynamic enables dynamic blob tip cap from the blob tip oracle
 	// instead of using static tip cap for blob transactions.

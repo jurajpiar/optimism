@@ -351,6 +351,60 @@ interface IOPContractsManager {
 
     function deploy(DeployInput calldata _input) external returns (DeployOutput memory);
 
+    // -------- Split Deployment Functions for RSK Compatibility --------
+
+    function deployAddressManager(DeployInput calldata _input, DeployOutput memory _output)
+        external
+        returns (DeployOutput memory);
+
+    function deployProxyAdmin(DeployInput calldata _input, DeployOutput memory _output)
+        external
+        returns (DeployOutput memory);
+
+    function deployL1ERC721Bridge(DeployInput calldata _input, DeployOutput memory _output)
+        external
+        returns (DeployOutput memory);
+
+    function deployOptimismPortal(DeployInput calldata _input, DeployOutput memory _output)
+        external
+        returns (DeployOutput memory);
+
+    function deployETHLockbox(DeployInput calldata _input, DeployOutput memory _output)
+        external
+        returns (DeployOutput memory);
+
+    function deploySystemConfig(DeployInput calldata _input, DeployOutput memory _output)
+        external
+        returns (DeployOutput memory);
+
+    function deployOptimismMintableERC20Factory(DeployInput calldata _input, DeployOutput memory _output)
+        external
+        returns (DeployOutput memory);
+
+    function deployDisputeGameFactory(DeployInput calldata _input, DeployOutput memory _output)
+        external
+        returns (DeployOutput memory);
+
+    function deployAnchorStateRegistry(DeployInput calldata _input, DeployOutput memory _output)
+        external
+        returns (DeployOutput memory);
+
+    function deployL1StandardBridge(DeployInput calldata _input, DeployOutput memory _output)
+        external
+        returns (DeployOutput memory);
+
+    function deployL1CrossDomainMessenger(DeployInput calldata _input, DeployOutput memory _output)
+        external
+        returns (DeployOutput memory);
+
+    function deployDelayedWETHPermissionedGame(DeployInput calldata _input, DeployOutput memory _output)
+        external
+        returns (DeployOutput memory);
+
+    function setAndInitializeProxyImplementations(DeployInput calldata _input, DeployOutput memory _output)
+        external
+        returns (DeployOutput memory);
+
     /// @notice Upgrades the implementation of all proxies in the specified chains
     /// @param _opChainConfigs The chains to upgrade
     function upgrade(OpChainConfig[] memory _opChainConfigs) external;
