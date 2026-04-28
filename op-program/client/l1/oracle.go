@@ -15,6 +15,7 @@ import (
 
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/client/mpt"
+	"github.com/ethereum-optimism/optimism/op-program/client/rsktrie"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
@@ -40,6 +41,7 @@ type Oracle interface {
 type PreimageOracle struct {
 	oracle preimage.Oracle
 	hint   preimage.Hinter
+	isRSK  bool // When true, use RSK binary unitrie and RSK header/tx/receipt formats
 }
 
 var _ Oracle = (*PreimageOracle)(nil)
@@ -51,51 +53,86 @@ func NewPreimageOracle(raw preimage.Oracle, hint preimage.Hinter) *PreimageOracl
 	}
 }
 
-func (p *PreimageOracle) headerByBlockHash(blockHash common.Hash) *types.Header {
+// SetRSKMode enables RSK-specific L1 data handling (binary unitrie, RSK headers/txs/receipts).
+// Must be called after boot, when the L1 chain ID is known.
+func (p *PreimageOracle) SetRSKMode(isRSK bool) {
+	p.isRSK = isRSK
+}
+
+func (p *PreimageOracle) headerByBlockHash(blockHash common.Hash) (*types.Header, eth.BlockInfo) {
 	p.hint.Hint(BlockHeaderHint(blockHash))
 	headerRlp := p.oracle.Get(preimage.Keccak256Key(blockHash))
+
+	if p.isRSK {
+		rskHeader, err := rsktrie.DecodeRSKBlockHeader(headerRlp)
+		if err != nil {
+			panic(fmt.Errorf("invalid RSK block header %s: %w", blockHash, err))
+		}
+		info := rsktrie.NewRSKBlockInfo(blockHash, rskHeader)
+		return info.Header(), info
+	}
+
 	var header types.Header
 	if err := rlp.DecodeBytes(headerRlp, &header); err != nil {
 		panic(fmt.Errorf("invalid block header %s: %w", blockHash, err))
 	}
-	return &header
+	info := eth.HeaderBlockInfoTrusted(blockHash, &header)
+	return &header, info
 }
 
 func (p *PreimageOracle) HeaderByBlockHash(blockHash common.Hash) eth.BlockInfo {
-	return eth.HeaderBlockInfoTrusted(blockHash, p.headerByBlockHash(blockHash))
+	_, info := p.headerByBlockHash(blockHash)
+	return info
 }
 
 func (p *PreimageOracle) TransactionsByBlockHash(blockHash common.Hash) (eth.BlockInfo, types.Transactions) {
-	header := p.headerByBlockHash(blockHash)
+	header, info := p.headerByBlockHash(blockHash)
 	p.hint.Hint(TransactionsHint(blockHash))
 
-	opaqueTxs := mpt.ReadTrie(header.TxHash, func(key common.Hash) []byte {
+	getPreimage := func(key common.Hash) []byte {
 		return p.oracle.Get(preimage.Keccak256Key(key))
-	})
+	}
 
+	if p.isRSK {
+		opaqueTxs := rsktrie.ReadTrie(header.TxHash, getPreimage)
+		txs, err := rsktrie.DecodeRSKTransactions(opaqueTxs)
+		if err != nil {
+			panic(fmt.Errorf("failed to decode RSK txs: %w", err))
+		}
+		return info, txs
+	}
+
+	opaqueTxs := mpt.ReadTrie(header.TxHash, getPreimage)
 	txs, err := eth.DecodeTransactions(opaqueTxs)
 	if err != nil {
 		panic(fmt.Errorf("failed to decode list of txs: %w", err))
 	}
-
-	return eth.HeaderBlockInfoTrusted(blockHash, header), txs
+	return info, txs
 }
 
 func (p *PreimageOracle) ReceiptsByBlockHash(blockHash common.Hash) (eth.BlockInfo, types.Receipts) {
 	info, txs := p.TransactionsByBlockHash(blockHash)
-
 	p.hint.Hint(ReceiptsHint(blockHash))
 
-	opaqueReceipts := mpt.ReadTrie(info.ReceiptHash(), func(key common.Hash) []byte {
+	getPreimage := func(key common.Hash) []byte {
 		return p.oracle.Get(preimage.Keccak256Key(key))
-	})
+	}
 
+	if p.isRSK {
+		opaqueReceipts := rsktrie.ReadTrie(info.ReceiptHash(), getPreimage)
+		receipts, err := rsktrie.DecodeRSKReceipts(opaqueReceipts)
+		if err != nil {
+			panic(fmt.Errorf("bad RSK receipts for block %s: %w", info.Hash(), err))
+		}
+		return info, receipts
+	}
+
+	opaqueReceipts := mpt.ReadTrie(info.ReceiptHash(), getPreimage)
 	txHashes := eth.TransactionsToHashes(txs)
 	receipts, err := eth.DecodeRawReceipts(eth.ToBlockID(info), opaqueReceipts, txHashes)
 	if err != nil {
-		panic(fmt.Errorf("bad receipts data for block %s: %w", blockHash, err))
+		panic(fmt.Errorf("bad receipts data for block %s: %w", info.Hash(), err))
 	}
-
 	return info, receipts
 }
 

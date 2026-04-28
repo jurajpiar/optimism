@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/interop"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
+	"github.com/ethereum-optimism/optimism/op-program/client/rsktrie"
 	"github.com/ethereum-optimism/optimism/op-program/client/tasks"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
@@ -63,6 +64,13 @@ func RunProgram(logger log.Logger, preimageOracle io.ReadWriter, preimageHinter 
 		return interop.RunInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle)
 	}
 	bootInfo := boot.NewBootstrapClient(pClient).BootInfo()
+
+	// Enable RSK-specific L1 data handling if L1 is an RSK chain.
+	if bootInfo.RollupConfig != nil && rsktrie.IsRSKChain(bootInfo.RollupConfig.L1ChainID.Uint64()) {
+		logger.Info("RSK L1 detected, enabling binary unitrie mode", "l1ChainID", bootInfo.RollupConfig.L1ChainID)
+		l1PreimageOracle.SetRSKMode(true)
+	}
+
 	db := memorydb.New()
 	return RunPreInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, db, tasks.DerivationOptions{})
 }

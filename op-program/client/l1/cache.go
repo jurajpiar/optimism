@@ -46,6 +46,13 @@ func NewCachingOracle(oracle Oracle) *CachingOracle {
 	}
 }
 
+// SetRSKMode delegates to the underlying PreimageOracle if it supports RSK mode.
+func (o *CachingOracle) SetRSKMode(isRSK bool) {
+	if po, ok := o.oracle.(*PreimageOracle); ok {
+		po.SetRSKMode(isRSK)
+	}
+}
+
 func (o *CachingOracle) HeaderByBlockHash(blockHash common.Hash) eth.BlockInfo {
 	block, ok := o.blocks.Get(blockHash)
 	if ok {

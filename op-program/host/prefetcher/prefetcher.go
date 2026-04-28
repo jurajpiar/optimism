@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-program/client/mpt"
+	"github.com/ethereum-optimism/optimism/op-program/client/rsktrie"
 	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
 	hosttypes "github.com/ethereum-optimism/optimism/op-program/host/types"
@@ -72,6 +73,9 @@ type Prefetcher struct {
 	// Used to run the program for native block execution
 	executor       ProgramExecutor
 	agreedPrestate []byte
+
+	// isRSK enables RSK-specific L1 data encoding (binary unitrie, RSK tx/receipt format)
+	isRSK bool
 }
 
 func NewPrefetcher(
@@ -85,6 +89,21 @@ func NewPrefetcher(
 	l2Head common.Hash,
 	agreedPrestate []byte,
 ) *Prefetcher {
+	return NewPrefetcherWithOpts(logger, l1Fetcher, l1BlobFetcher, defaultChainID, l2Sources, kvStore, executor, l2Head, agreedPrestate, false)
+}
+
+func NewPrefetcherWithOpts(
+	logger log.Logger,
+	l1Fetcher L1Source,
+	l1BlobFetcher L1BlobSource,
+	defaultChainID eth.ChainID,
+	l2Sources hosttypes.L2Sources,
+	kvStore kvstore.KV,
+	executor ProgramExecutor,
+	l2Head common.Hash,
+	agreedPrestate []byte,
+	isRSK bool,
+) *Prefetcher {
 	return &Prefetcher{
 		logger:         logger,
 		l1Fetcher:      NewRetryingL1Source(logger, l1Fetcher),
@@ -95,6 +114,7 @@ func NewPrefetcher(
 		executor:       executor,
 		l2Head:         l2Head,
 		agreedPrestate: agreedPrestate,
+		isRSK:          isRSK,
 	}
 }
 
@@ -544,6 +564,9 @@ func (p BlockDataKey) Key() [32]byte {
 }
 
 func (p *Prefetcher) storeReceipts(receipts types.Receipts) error {
+	if p.isRSK {
+		return p.storeRSKReceipts(receipts)
+	}
 	opaqueReceipts, err := eth.EncodeReceipts(receipts)
 	if err != nil {
 		return err
@@ -552,6 +575,9 @@ func (p *Prefetcher) storeReceipts(receipts types.Receipts) error {
 }
 
 func (p *Prefetcher) storeTransactions(txs types.Transactions) error {
+	if p.isRSK {
+		return p.storeRSKTransactions(txs)
+	}
 	opaqueTxs, err := eth.EncodeTransactions(txs)
 	if err != nil {
 		return err
@@ -561,6 +587,27 @@ func (p *Prefetcher) storeTransactions(txs types.Transactions) error {
 
 func (p *Prefetcher) storeTrieNodes(values []hexutil.Bytes) error {
 	_, nodes := mpt.WriteTrie(values)
+	return p.storeNodes(nodes)
+}
+
+func (p *Prefetcher) storeRSKTransactions(txs types.Transactions) error {
+	opaqueTxs, err := rsktrie.EncodeRSKTransactions(txs)
+	if err != nil {
+		return fmt.Errorf("encode RSK transactions: %w", err)
+	}
+	return p.storeRSKTrieNodes(opaqueTxs)
+}
+
+func (p *Prefetcher) storeRSKReceipts(receipts types.Receipts) error {
+	opaqueReceipts, err := rsktrie.EncodeRSKReceipts(receipts)
+	if err != nil {
+		return fmt.Errorf("encode RSK receipts: %w", err)
+	}
+	return p.storeRSKTrieNodes(opaqueReceipts)
+}
+
+func (p *Prefetcher) storeRSKTrieNodes(values []hexutil.Bytes) error {
+	_, nodes := rsktrie.WriteTrie(values)
 	return p.storeNodes(nodes)
 }
 

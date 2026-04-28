@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-program/host/flags"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
+	"github.com/ethereum-optimism/optimism/op-program/client/rsktrie"
 	"github.com/ethereum-optimism/optimism/op-program/host/prefetcher"
 	opservice "github.com/ethereum-optimism/optimism/op-service"
 	"github.com/ethereum-optimism/optimism/op-service/client"
@@ -104,7 +105,11 @@ func makeDefaultPrefetcher(ctx context.Context, logger log.Logger, kv kvstore.KV
 	}
 
 	executor := MakeProgramExecutor(logger, cfg)
-	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, eth.ChainIDFromBig(cfg.Rollups[0].L2ChainID), sources, kv, executor, cfg.L2Head, cfg.AgreedPrestate), nil
+	isRSK := rskChainID(cfg)
+	if isRSK {
+		logger.Info("RSK L1 detected, enabling binary unitrie mode for prefetcher")
+	}
+	return prefetcher.NewPrefetcherWithOpts(logger, l1Cl, l1BlobFetcher, eth.ChainIDFromBig(cfg.Rollups[0].L2ChainID), sources, kv, executor, cfg.L2Head, cfg.AgreedPrestate, isRSK), nil
 }
 
 type programExecutor struct {
@@ -195,4 +200,16 @@ func MakeProgramExecutor(logger log.Logger, cfg *config.Config) prefetcher.Progr
 		logger: logger,
 		cfg:    cfg,
 	}
+}
+
+// rskChainID returns true if the rollup config indicates an RSK L1 chain.
+func rskChainID(cfg *config.Config) bool {
+	if len(cfg.Rollups) == 0 {
+		return false
+	}
+	l1ChainID := cfg.Rollups[0].L1ChainID
+	if l1ChainID == nil {
+		return false
+	}
+	return rsktrie.IsRSKChain(l1ChainID.Uint64())
 }

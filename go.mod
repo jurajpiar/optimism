@@ -5,6 +5,7 @@ go 1.24.0
 toolchain go1.24.10
 
 require (
+	gorsk v0.0.0
 	github.com/BurntSushi/toml v1.5.0
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/andybalholm/brotli v1.1.0
@@ -315,6 +316,8 @@ require (
 // replace github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101608.0-rc.1
 
 replace github.com/ethereum/go-ethereum => ../op-geth
+
+replace gorsk => ../gorsk
 
 // replace github.com/ethereum-optimism/superchain-registry/superchain => ../superchain-registry/superchain
 // This release keeps breaking Go builds. Stop that.
