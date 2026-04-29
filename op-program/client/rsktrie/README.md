@@ -99,6 +99,36 @@ Tests cover:
 
 ## Remaining work
 
-- **Host-side RSK header RLP**: The L1 fetcher returns headers as `types.Header` which loses RSK-specific fields. For full correctness, the host needs to store raw RSK header RLP from the RPC response rather than re-encoding from `types.Header`. Currently the RSK header decoder on the client side handles the fields needed for fault proofs (TxTrieRoot, ReceiptTrieRoot).
-- **End-to-end with Cannon**: Run op-program inside Cannon against real RSK L1 data and verify correct L2 output root computation.
-- **op-challenger integration**: Configure op-challenger to run against an RSK-backed OP Stack chain with FaultDisputeGame (game type 0).
+### Prerequisites
+- An OP Stack L2 running against RSK L1 (testnet or regtest) is needed for all steps below.
+
+### 1. Host-side RSK header RLP
+The L1 fetcher returns headers as `types.Header` which loses RSK-specific fields. For full correctness, the host needs to store raw RSK header RLP from the RPC response rather than re-encoding from `types.Header`. Currently the RSK header decoder on the client side handles the fields needed for fault proofs (TxTrieRoot, ReceiptTrieRoot).
+
+### 2. End-to-end with Cannon
+Run op-program inside Cannon against real RSK L1 data and verify correct L2 output root computation.
+
+Steps:
+1. `make cannon op-program` — build Cannon and op-program binaries
+2. Run op-program in **host mode** first (native, not MIPS) to verify RSK L1 data reading works:
+   ```bash
+   ./op-program/bin/op-program \
+     --l1 <RSK_RPC_URL> \
+     --l1.beacon <BEACON_URL> \
+     --l2 <L2_RPC_URL> \
+     --rollup.config <ROLLUP_JSON> \
+     --l2.chain-config <L2_CHAIN_CONFIG_JSON> \
+     --l1.head <L1_HEAD_HASH> \
+     --l2.head <L2_HEAD_HASH> \
+     --l2.claim <CLAIMED_OUTPUT_ROOT> \
+     --l2.block-number <L2_BLOCK_NUMBER> \
+     --data-dir /tmp/op-program-data
+   ```
+3. `make cannon-prestates` — build the MIPS ELF prestate
+4. Run Cannon with the prestate against the same data
+
+### 3. op-challenger integration
+Configure op-challenger to run against an RSK-backed OP Stack chain with FaultDisputeGame (game type 0).
+
+### Known issue
+The op-e2e test framework has a pre-existing ABI mismatch (`DeployImplementationsInput` struct has 16 fields but ABI expects 17) which blocks running `TestOutputCannonGame`-style tests. This needs to be resolved before e2e Cannon tests can run.
