@@ -390,9 +390,10 @@ func (m *SimpleTxManager) SendAsync(ctx context.Context, candidate TxCandidate, 
 	}()
 }
 
-// prepare prepares the transaction for sending.
-// Contract reverts are retried at L1 block pace (cfg.L1BlockTime) since
-// contract state only changes with new blocks; other errors retry at 2s.
+// prepare prepares the transaction for sending. Backoff between attempts is
+// controlled by cfg.PrepareBackoff (defaults to a fixed 2s when nil); RSK and
+// other non-Ethereum L1s install a revert-aware strategy via that hook so
+// contract reverts back off at L1-block pace.
 func (m *SimpleTxManager) prepare(ctx context.Context, candidate TxCandidate) (*types.Transaction, error) {
 	const maxAttempts = 30
 	var (
@@ -407,21 +408,14 @@ func (m *SimpleTxManager) prepare(ctx context.Context, candidate TxCandidate) (*
 		if err == nil {
 			return tx, nil
 		}
-
-		delay := 2 * time.Second
-		var revertErr *ContractRevertError
-		if errors.As(err, &revertErr) {
-			delay = m.cfg.L1BlockTime
-			m.l.Warn("Contract reverted, retrying at L1 block pace",
-				"err", err, "retry_in", delay, "attempt", i+1)
-		} else {
-			m.l.Warn("Failed to create a transaction, will retry",
-				"err", err, "attempt", i+1)
-		}
+		m.l.Warn("Failed to create a transaction, will retry", "err", err, "attempt", i+1)
 		if i == maxAttempts-1 {
 			break
 		}
-
+		delay := 2 * time.Second
+		if m.cfg.PrepareBackoff != nil {
+			delay = m.cfg.PrepareBackoff(i, err)
+		}
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
