@@ -70,6 +70,15 @@ type EthClientConfig struct {
 	// till we re-attempt the user-preferred methods.
 	// If this is 0 then the client does not fall back to less optimal but available methods.
 	MethodResetDuration time.Duration
+
+	// Optional hooks for L1 chains that don't follow Ethereum's hashing /
+	// trie / receipt rules. If nil, the standard Ethereum implementation is
+	// used. RSK adapters live in oprsk/l1source. See types.go for the
+	// function signatures.
+	BlockVerifier     BlockVerifierFn
+	HeaderVerifier    HeaderVerifierFn
+	ReceiptsValidator ReceiptsValidatorFn
+	TxHashesFromBlock TxHashesFromBlockFn
 }
 
 // DefaultEthClientConfig creates a new eth client config,
@@ -129,6 +138,12 @@ type EthClient struct {
 
 	mustBePostMerge bool
 
+	// Optional non-Ethereum L1 hooks; nil means default Ethereum behavior.
+	blockVerifier     BlockVerifierFn
+	headerVerifier    HeaderVerifierFn
+	receiptsValidator ReceiptsValidatorFn
+	txHashesFromBlock TxHashesFromBlockFn
+
 	log log.Logger
 
 	// cache transactions in bundles per block hash
@@ -167,6 +182,10 @@ func NewEthClient(client client.RPC, log log.Logger, metrics caching.Metrics, co
 		recProvider:       recProvider,
 		trustRPC:          config.TrustRPC,
 		mustBePostMerge:   config.MustBePostMerge,
+		blockVerifier:     config.BlockVerifier,
+		headerVerifier:    config.HeaderVerifier,
+		receiptsValidator: config.ReceiptsValidator,
+		txHashesFromBlock: config.TxHashesFromBlock,
 		log:               log,
 		transactionsCache: caching.NewLRUCache[common.Hash, types.Transactions](metrics, "txs", config.TransactionsCacheSize),
 		headersCache:      caching.NewLRUCache[common.Hash, *types.Header](metrics, "headers", config.HeadersCacheSize),
@@ -212,9 +231,29 @@ func (n numberID) CheckID(id eth.BlockID) error {
 	return nil
 }
 
-// headerCall fetches a header (eth_getBlockBy* with fullTx=false), verifies it,
-// caches it, and returns it. It is the single source of truth for both
-// HeaderBy* and InfoBy*.
+// runHeaderVerify runs the configured HeaderVerifier hook if non-nil,
+// otherwise falls back to the default Ethereum hash recomputation.
+func (s *EthClient) runHeaderVerify(ctx context.Context, hdr *RPCHeader) error {
+	if s.headerVerifier != nil {
+		return s.headerVerifier(ctx, hdr.CreateGethHeader())
+	}
+	return hdr.VerifyHash()
+}
+
+// runBlockVerify runs the configured BlockVerifier hook if non-nil,
+// otherwise falls back to the default RPCBlock.Verify() (block hash +
+// DeriveSha tx-trie root + L1/L2 withdrawals).
+func (s *EthClient) runBlockVerify(ctx context.Context, b *RPCBlock) error {
+	if s.blockVerifier != nil {
+		return s.blockVerifier(ctx, b.CreateGethHeader(), types.Transactions(b.Transactions))
+	}
+	return b.Verify()
+}
+
+// headerCall fetches a header (eth_getBlockBy* with fullTx=false), verifies it
+// (via the optional pluggable verifier, otherwise the default Ethereum
+// hash recomputation), caches it, and returns it. It is the single source of
+// truth for both HeaderBy* and InfoBy*.
 func (s *EthClient) headerCall(ctx context.Context, method string, id rpcBlockID) (*types.Header, error) {
 	var rpcHdr *RPCHeader
 	err := s.client.CallContext(ctx, &rpcHdr, method, id.Arg(), false) // headers are just blocks without txs
@@ -224,9 +263,16 @@ func (s *EthClient) headerCall(ctx context.Context, method string, id rpcBlockID
 	if rpcHdr == nil {
 		return nil, ethereum.NotFound
 	}
-	header, err := rpcHdr.Header(s.trustRPC, s.mustBePostMerge)
+	// trustCache=true skips the inline VerifyHash; the (possibly pluggable)
+	// verifier below owns header verification when !trustRPC.
+	header, err := rpcHdr.Header(true, s.mustBePostMerge)
 	if err != nil {
 		return nil, err
+	}
+	if !s.trustRPC {
+		if err := s.runHeaderVerify(ctx, rpcHdr); err != nil {
+			return nil, err
+		}
 	}
 	if err := id.CheckID(rpcHdr.BlockID()); err != nil {
 		return nil, fmt.Errorf("fetched block header does not match requested ID: %w", err)
@@ -249,11 +295,13 @@ func (s *EthClient) blockCall(ctx context.Context, method string, id rpcBlockID)
 		return nil, nil, ethereum.NotFound
 	}
 	if !s.trustRPC {
-		if err := block.Verify(); err != nil {
+		if err := s.runBlockVerify(ctx, block); err != nil {
 			return nil, nil, err
 		}
 	}
-	header, err := block.RPCHeader.Header(s.trustRPC, s.mustBePostMerge)
+	// trustCache=true: the (possibly pluggable) verifier above already ran
+	// the block-level checks; Header here only needs post-merge validation.
+	header, err := block.RPCHeader.Header(true, s.mustBePostMerge)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to verify block from RPC: %w", err)
 	}
@@ -274,7 +322,13 @@ func (s *EthClient) payloadCall(ctx context.Context, method string, id rpcBlockI
 	if block == nil {
 		return nil, ethereum.NotFound
 	}
-	envelope, err := block.ExecutionPayloadEnvelope(s.trustRPC)
+	if !s.trustRPC {
+		if err := s.runBlockVerify(ctx, block); err != nil {
+			return nil, err
+		}
+	}
+	// trustCache=true: we already ran the (possibly pluggable) verifier above.
+	envelope, err := block.ExecutionPayloadEnvelope(true)
 	if err != nil {
 		return nil, err
 	}
@@ -413,7 +467,16 @@ func (s *EthClient) FetchReceipts(ctx context.Context, blockHash common.Hash) (e
 		return nil, nil, fmt.Errorf("querying block: %w", err)
 	}
 
-	txHashes, _ := eth.TransactionsToHashes(txs), eth.ToBlockID(info)
+	// Default: derive tx hashes locally from decoded txs. RSK and similar
+	// chains can override via TxHashesFromBlock because their canonical
+	// hash differs from go-ethereum's tx.Hash() for system / internal txs.
+	txHashes := eth.TransactionsToHashes(txs)
+	if s.txHashesFromBlock != nil {
+		txHashes, err = s.txHashesFromBlock(ctx, info.Hash())
+		if err != nil {
+			return nil, nil, fmt.Errorf("fetching tx hashes from L1 block: %w", err)
+		}
+	}
 	receipts, err := s.recProvider.FetchReceipts(ctx, info, txHashes)
 	if err != nil {
 		return nil, nil, err
