@@ -183,37 +183,21 @@ func (t *TxMetrics) TxPublished(errString string) {
 	}
 }
 
-func (t *TxMetrics) RecordBaseFee(baseFee *big.Int) {
-	if baseFee == nil {
+// setGaugeFromBig sets g from v as a float64; nil v is a no-op so callers on
+// pre-EIP-1559 / pre-EIP-4844 L1s (where BaseFee or BlobBaseFee may be unset)
+// don't need to repeat the nil check at every Record* call site.
+func setGaugeFromBig(g prometheus.Gauge, v *big.Int) {
+	if v == nil {
 		return
 	}
-	bff, _ := baseFee.Float64()
-	t.baseFee.Set(bff)
+	f, _ := v.Float64()
+	g.Set(f)
 }
 
-func (t *TxMetrics) RecordBlobBaseFee(blobBaseFee *big.Int) {
-	if blobBaseFee == nil {
-		return
-	}
-	bff, _ := blobBaseFee.Float64()
-	t.blobBaseFee.Set(bff)
-}
-
-func (t *TxMetrics) RecordTipCap(tipcap *big.Int) {
-	if tipcap == nil {
-		return
-	}
-	tcf, _ := tipcap.Float64()
-	t.tipCap.Set(tcf)
-}
-
-func (t *TxMetrics) RecordBlobTipCap(blobTipCap *big.Int) {
-	if blobTipCap == nil {
-		return
-	}
-	bcf, _ := blobTipCap.Float64()
-	t.blobTipCap.Set(bcf)
-}
+func (t *TxMetrics) RecordBaseFee(baseFee *big.Int)         { setGaugeFromBig(t.baseFee, baseFee) }
+func (t *TxMetrics) RecordBlobBaseFee(blobBaseFee *big.Int) { setGaugeFromBig(t.blobBaseFee, blobBaseFee) }
+func (t *TxMetrics) RecordTipCap(tipCap *big.Int)           { setGaugeFromBig(t.tipCap, tipCap) }
+func (t *TxMetrics) RecordBlobTipCap(blobTipCap *big.Int)   { setGaugeFromBig(t.blobTipCap, blobTipCap) }
 func (t *TxMetrics) RPCError() {
 	t.rpcError.Inc()
 }
