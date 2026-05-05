@@ -1,8 +1,0 @@
-{
-  "guardian": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-  "paused": false,
-  "protocolVersionsOwner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-  "recommendedProtocolVersion": "0x0000000000000000000000000000000000000009000000000000000000000000",
-  "requiredProtocolVersion": "0x0000000000000000000000000000000000000009000000000000000000000000",
-  "superchainProxyAdminOwner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-}

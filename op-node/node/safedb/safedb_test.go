@@ -302,68 +302,6 @@ func TestTruncateOnSafeHeadReset_AfterLastEntry(t *testing.T) {
 	verifySafeHeads()
 }
 
-func TestLatestSafeHead(t *testing.T) {
-	logger := testlog.Logger(t, log.LvlInfo)
-	dir := t.TempDir()
-	db, err := NewSafeDB(logger, dir)
-	require.NoError(t, err)
-	defer db.Close()
-
-	t.Run("EmptyDB", func(t *testing.T) {
-		_, _, err := db.LatestSafeHead(context.Background())
-		require.ErrorIs(t, err, ErrNotFound)
-	})
-
-	l2a := eth.L2BlockRef{
-		Hash:   common.Hash{0x02, 0xaa},
-		Number: 20,
-	}
-	l2b := eth.L2BlockRef{
-		Hash:   common.Hash{0x02, 0xbb},
-		Number: 25,
-	}
-	l1a := eth.BlockID{
-		Hash:   common.Hash{0x01, 0xaa},
-		Number: 100,
-	}
-	l1b := eth.BlockID{
-		Hash:   common.Hash{0x01, 0xbb},
-		Number: 150,
-	}
-
-	t.Run("SingleEntry", func(t *testing.T) {
-		require.NoError(t, db.SafeHeadUpdated(l2a, l1a))
-		gotL1, gotL2, err := db.LatestSafeHead(context.Background())
-		require.NoError(t, err)
-		require.Equal(t, l1a, gotL1)
-		require.Equal(t, l2a.ID(), gotL2)
-	})
-
-	t.Run("ReturnsLatest", func(t *testing.T) {
-		require.NoError(t, db.SafeHeadUpdated(l2b, l1b))
-		gotL1, gotL2, err := db.LatestSafeHead(context.Background())
-		require.NoError(t, err)
-		require.Equal(t, l1b, gotL1)
-		require.Equal(t, l2b.ID(), gotL2)
-	})
-
-	t.Run("SurvivesReopen", func(t *testing.T) {
-		require.NoError(t, db.Close())
-		db2, err := NewSafeDB(logger, dir)
-		require.NoError(t, err)
-		defer db2.Close()
-		gotL1, gotL2, err := db2.LatestSafeHead(context.Background())
-		require.NoError(t, err)
-		require.Equal(t, l1b, gotL1)
-		require.Equal(t, l2b.ID(), gotL2)
-	})
-}
-
-func TestLatestSafeHead_Disabled(t *testing.T) {
-	_, _, err := Disabled.LatestSafeHead(context.Background())
-	require.ErrorIs(t, err, ErrNotEnabled)
-}
-
 func TestKeysFollowNaturalByteOrdering(t *testing.T) {
 	vals := []uint64{0, 1, math.MaxUint32 - 1, math.MaxUint32, math.MaxUint32 + 1, math.MaxUint64 - 1, math.MaxUint64}
 	for i := 1; i < len(vals); i++ {

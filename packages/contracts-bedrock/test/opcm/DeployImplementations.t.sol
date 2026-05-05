@@ -240,8 +240,7 @@ contract DeployImplementations_Test is Test, FeatureFlags {
             protocolVersionsProxy,
             superchainProxyAdmin,
             l1ProxyAdminOwner,
-            challenger,
-            false // skipFaultProofs
+            challenger
         );
 
         DeployImplementations.Output memory output = deployImplementations.run(input);
@@ -574,8 +573,7 @@ contract DeployImplementations_Test is Test, FeatureFlags {
             protocolVersionsProxy,
             superchainProxyAdmin,
             l1ProxyAdminOwner,
-            challenger,
-            false // skipFaultProofs
+            challenger
         );
     }
 }

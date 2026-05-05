@@ -2,7 +2,6 @@
 pragma solidity 0.8.15;
 
 import { Script } from "forge-std/Script.sol";
-import { console2 as console } from "forge-std/console2.sol";
 
 import { Constants } from "src/libraries/Constants.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
@@ -112,108 +111,6 @@ contract DeployOPChain is Script {
         // TODO: Eventually switch from Permissioned to Permissionless.
         // vm.label(address(output_.faultDisputeGame), "faultDisputeGame");
         // vm.label(address(output_.delayedWETHPermissionlessGameProxy), "delayedWETHPermissionlessGameProxy");
-    }
-
-    /// @notice Runs the DeployOPChain script with split transactions for RSK compatibility.
-    /// @dev This function splits the monolithic deploy() into 14 separate transactions to fit
-    ///      within RSK's 6.8M block gas limit.
-    /// @param _input The input to the script.
-    /// @return output_ The output of the script.
-    function runSplit(Types.DeployOPChainInput memory _input) public returns (Output memory output_) {
-        checkInput(_input);
-
-        // Check if OPCM v2 should be used - split deployment only supports v1
-        require(address(_input.opcm).code.length > 0, "DeployOPChain: OPCM address has no code");
-        isOPCMv2 = SemverComp.gte(IOPContractsManager(_input.opcm).version(), Constants.OPCM_V2_MIN_VERSION);
-        require(!isOPCMv2, "DeployOPChain: split deployment not supported for OPCM v2");
-
-        IOPContractsManager opcm = IOPContractsManager(_input.opcm);
-        IOPContractsManager.DeployInput memory deployInput = _toOPCMV1DeployInput(_input);
-        IOPContractsManager.DeployOutput memory deployOutput;
-
-        console.log("Deploying Address Manager using opcm");
-        vm.broadcast(msg.sender);
-        deployOutput = opcm.deployAddressManager(deployInput, deployOutput);
-
-        console.log("Deploying Proxy Admin using opcm");
-        vm.broadcast(msg.sender);
-        deployOutput = opcm.deployProxyAdmin(deployInput, deployOutput);
-
-        console.log("Deploying L1 ERC721 Bridge using opcm");
-        vm.broadcast(msg.sender);
-        deployOutput = opcm.deployL1ERC721Bridge(deployInput, deployOutput);
-
-        console.log("Deploying Optimism Portal using opcm");
-        vm.broadcast(msg.sender);
-        deployOutput = opcm.deployOptimismPortal(deployInput, deployOutput);
-
-        console.log("Deploying ETH Lockbox using opcm");
-        vm.broadcast(msg.sender);
-        deployOutput = opcm.deployETHLockbox(deployInput, deployOutput);
-
-        console.log("Deploying System Config using opcm");
-        vm.broadcast(msg.sender);
-        deployOutput = opcm.deploySystemConfig(deployInput, deployOutput);
-
-        console.log("Deploying Optimism Mintable ERC20 Factory using opcm");
-        vm.broadcast(msg.sender);
-        deployOutput = opcm.deployOptimismMintableERC20Factory(deployInput, deployOutput);
-
-        console.log("Deploying Dispute Game Factory using opcm");
-        vm.broadcast(msg.sender);
-        deployOutput = opcm.deployDisputeGameFactory(deployInput, deployOutput);
-
-        console.log("Deploying Anchor State Registry using opcm");
-        vm.broadcast(msg.sender);
-        deployOutput = opcm.deployAnchorStateRegistry(deployInput, deployOutput);
-
-        console.log("Deploying L1 Standard Bridge using opcm");
-        vm.broadcast(msg.sender);
-        deployOutput = opcm.deployL1StandardBridge(deployInput, deployOutput);
-
-        console.log("Deploying L1 Cross Domain Messenger using opcm");
-        vm.broadcast(msg.sender);
-        deployOutput = opcm.deployL1CrossDomainMessenger(deployInput, deployOutput);
-
-        console.log("Deploying Delayed WETH Permissioned Game using opcm");
-        vm.broadcast(msg.sender);
-        deployOutput = opcm.deployDelayedWETHPermissionedGame(deployInput, deployOutput);
-
-        console.log("Setting and initializing proxy implementations using opcm");
-        vm.broadcast(msg.sender);
-        deployOutput = opcm.setAndInitializeProxyImplementations(deployInput, deployOutput);
-
-        output_ = _fromOPCMV1OutputToOutput(deployOutput);
-
-        console.log("All contracts deployed:");
-        console.log("opChainProxyAdmin: %s", address(output_.opChainProxyAdmin));
-        console.log("addressManager: %s", address(output_.addressManager));
-        console.log("l1ERC721BridgeProxy: %s", address(output_.l1ERC721BridgeProxy));
-        console.log("systemConfigProxy: %s", address(output_.systemConfigProxy));
-        console.log("optimismMintableERC20FactoryProxy: %s", address(output_.optimismMintableERC20FactoryProxy));
-        console.log("l1StandardBridgeProxy: %s", address(output_.l1StandardBridgeProxy));
-        console.log("l1CrossDomainMessengerProxy: %s", address(output_.l1CrossDomainMessengerProxy));
-        console.log("optimismPortalProxy: %s", address(output_.optimismPortalProxy));
-        console.log("ethLockboxProxy: %s", address(output_.ethLockboxProxy));
-        console.log("disputeGameFactoryProxy: %s", address(output_.disputeGameFactoryProxy));
-        console.log("anchorStateRegistryProxy: %s", address(output_.anchorStateRegistryProxy));
-        console.log("permissionedDisputeGame: %s", address(output_.permissionedDisputeGame));
-        console.log("delayedWETHPermissionedGameProxy: %s", address(output_.delayedWETHPermissionedGameProxy));
-
-        checkOutput(_input, output_);
-
-        vm.label(address(output_.opChainProxyAdmin), "opChainProxyAdmin");
-        vm.label(address(output_.addressManager), "addressManager");
-        vm.label(address(output_.l1ERC721BridgeProxy), "l1ERC721BridgeProxy");
-        vm.label(address(output_.systemConfigProxy), "systemConfigProxy");
-        vm.label(address(output_.optimismMintableERC20FactoryProxy), "optimismMintableERC20FactoryProxy");
-        vm.label(address(output_.l1StandardBridgeProxy), "l1StandardBridgeProxy");
-        vm.label(address(output_.l1CrossDomainMessengerProxy), "l1CrossDomainMessengerProxy");
-        vm.label(address(output_.optimismPortalProxy), "optimismPortalProxy");
-        vm.label(address(output_.ethLockboxProxy), "ethLockboxProxy");
-        vm.label(address(output_.disputeGameFactoryProxy), "disputeGameFactoryProxy");
-        vm.label(address(output_.anchorStateRegistryProxy), "anchorStateRegistryProxy");
-        vm.label(address(output_.delayedWETHPermissionedGameProxy), "delayedWETHPermissionedGameProxy");
     }
 
     // -------- Features --------

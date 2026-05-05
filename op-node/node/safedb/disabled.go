@@ -27,11 +27,6 @@ func (d *DisabledDB) SafeHeadAtL1(_ context.Context, _ uint64) (l1 eth.BlockID, 
 	return
 }
 
-func (d *DisabledDB) LatestSafeHead(_ context.Context) (l1 eth.BlockID, safeHead eth.BlockID, err error) {
-	err = ErrNotEnabled
-	return
-}
-
 func (d *DisabledDB) SafeHeadReset(_ eth.L2BlockRef) error {
 	return nil
 }

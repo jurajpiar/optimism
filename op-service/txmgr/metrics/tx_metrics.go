@@ -184,33 +184,21 @@ func (t *TxMetrics) TxPublished(errString string) {
 }
 
 func (t *TxMetrics) RecordBaseFee(baseFee *big.Int) {
-	if baseFee == nil {
-		return
-	}
 	bff, _ := baseFee.Float64()
 	t.baseFee.Set(bff)
 }
 
 func (t *TxMetrics) RecordBlobBaseFee(blobBaseFee *big.Int) {
-	if blobBaseFee == nil {
-		return
-	}
 	bff, _ := blobBaseFee.Float64()
 	t.blobBaseFee.Set(bff)
 }
 
 func (t *TxMetrics) RecordTipCap(tipcap *big.Int) {
-	if tipcap == nil {
-		return
-	}
 	tcf, _ := tipcap.Float64()
 	t.tipCap.Set(tcf)
 }
 
 func (t *TxMetrics) RecordBlobTipCap(blobTipCap *big.Int) {
-	if blobTipCap == nil {
-		return
-	}
 	bcf, _ := blobTipCap.Float64()
 	t.blobTipCap.Set(bcf)
 }

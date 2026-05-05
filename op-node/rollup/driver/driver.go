@@ -63,9 +63,6 @@ func NewDriver(
 	ec := engine.NewEngineController(driverCtx, l2, log, metrics, cfg, syncCfg, indexingMode, l1, sys.Register("engine-controller", nil))
 	// TODO(#17115): Refactor dependency cycles
 	ec.SetCrossUpdateHandler(statusTracker)
-	if reader, ok := safeHeadListener.(engine.SafeHeadReader); ok {
-		ec.SetSafeHeadReader(reader)
-	}
 
 	var finalizer Finalizer
 	if cfg.AltDAEnabled() {

@@ -61,50 +61,34 @@ contract DeployDisputeGame is Script {
     }
 
     function deployDisputeGameImplV2(Input memory _input, Output memory _output) internal {
-        IPermissionedDisputeGame impl;
+        // Shove the arguments into a struct to avoid stack-too-deep errors.
+        IFaultDisputeGame.GameConstructorParams memory args = IFaultDisputeGame.GameConstructorParams({
+            maxGameDepth: _input.maxGameDepth,
+            splitDepth: _input.splitDepth,
+            clockExtension: Duration.wrap(_input.clockExtension),
+            maxClockDuration: Duration.wrap((_input.maxClockDuration))
+        });
 
-        if (LibString.eq(_input.gameKind, "PermissionedDisputeGameStub")) {
-            // Stub has no constructor parameters - it's a minimal contract for RSK L1 deployment.
+        // PermissionedDisputeGame is used as the type here because it is a superset of
+        // FaultDisputeGame. If the user requests to deploy a FaultDisputeGame, the user will get a
+        // FaultDisputeGame (and not a PermissionedDisputeGame).
+        IPermissionedDisputeGame impl;
+        if (LibString.eq(_input.gameKind, "FaultDisputeGame")) {
             impl = IPermissionedDisputeGame(
                 DeployUtils.createDeterministic({
-                    _name: "PermissionedDisputeGameStub",
-                    _args: hex"",
+                    _name: "FaultDisputeGame",
+                    _args: DeployUtils.encodeConstructor(abi.encodeCall(IFaultDisputeGame.__constructor__, (args))),
                     _salt: DeployUtils.DEFAULT_SALT
                 })
             );
         } else {
-            // Shove the arguments into a struct to avoid stack-too-deep errors.
-            IFaultDisputeGame.GameConstructorParams memory args = IFaultDisputeGame.GameConstructorParams({
-                maxGameDepth: _input.maxGameDepth,
-                splitDepth: _input.splitDepth,
-                clockExtension: Duration.wrap(_input.clockExtension),
-                maxClockDuration: Duration.wrap((_input.maxClockDuration))
-            });
-
-            // PermissionedDisputeGame is used as the type here because it is a superset of
-            // FaultDisputeGame. If the user requests to deploy a FaultDisputeGame, the user will get a
-            // FaultDisputeGame (and not a PermissionedDisputeGame).
-            if (LibString.eq(_input.gameKind, "FaultDisputeGame")) {
-                impl = IPermissionedDisputeGame(
-                    DeployUtils.createDeterministic({
-                        _name: "FaultDisputeGame",
-                        _args: DeployUtils.encodeConstructor(
-                            abi.encodeCall(IFaultDisputeGame.__constructor__, (args))
-                        ),
-                        _salt: DeployUtils.DEFAULT_SALT
-                    })
-                );
-            } else {
-                impl = IPermissionedDisputeGame(
-                    DeployUtils.createDeterministic({
-                        _name: "PermissionedDisputeGame",
-                        _args: DeployUtils.encodeConstructor(
-                            abi.encodeCall(IPermissionedDisputeGame.__constructor__, (args))
-                        ),
-                        _salt: DeployUtils.DEFAULT_SALT
-                    })
-                );
-            }
+            impl = IPermissionedDisputeGame(
+                DeployUtils.createDeterministic({
+                    _name: "PermissionedDisputeGame",
+                    _args: DeployUtils.encodeConstructor(abi.encodeCall(IPermissionedDisputeGame.__constructor__, (args))),
+                    _salt: DeployUtils.DEFAULT_SALT
+                })
+            );
         }
 
         vm.label(address(impl), string.concat(_input.gameKind, "Impl"));
@@ -117,30 +101,25 @@ contract DeployDisputeGame is Script {
     }
 
     function assertValidInput(Input memory _input) internal pure {
+        require(_input.absolutePrestate != bytes32(0), "DeployDisputeGame: absolutePrestate not set");
+        require(_input.maxGameDepth != 0, "DeployDisputeGame: maxGameDepth not set");
+        require(_input.splitDepth != 0, "DeployDisputeGame: splitDepth not set");
         require(_input.l2ChainId != 0, "DeployDisputeGame: l2ChainId not set");
         require(address(_input.delayedWethProxy) != address(0), "DeployDisputeGame: delayedWethProxy not set");
         require(
             address(_input.anchorStateRegistryProxy) != address(0),
             "DeployDisputeGame: anchorStateRegistryProxy not set"
         );
+        require(address(_input.vmAddress) != address(0), "DeployDisputeGame: vmAddress not set");
         require(!LibString.eq(_input.release, ""), "DeployDisputeGame: release not set");
         require(
             LibString.eq(_input.gameKind, "FaultDisputeGame")
-                || LibString.eq(_input.gameKind, "PermissionedDisputeGame")
-                || LibString.eq(_input.gameKind, "PermissionedDisputeGameStub"),
+                || LibString.eq(_input.gameKind, "PermissionedDisputeGame"),
             "DeployDisputeGame: unknown game kind"
         );
 
         require(_input.proposer != address(0), "DeployDisputeGame: proposer not set");
         require(_input.challenger != address(0), "DeployDisputeGame: challenger not set");
-
-        // Full dispute games require additional inputs.
-        if (!LibString.eq(_input.gameKind, "PermissionedDisputeGameStub")) {
-            require(_input.absolutePrestate != bytes32(0), "DeployDisputeGame: absolutePrestate not set");
-            require(_input.maxGameDepth != 0, "DeployDisputeGame: maxGameDepth not set");
-            require(_input.splitDepth != 0, "DeployDisputeGame: splitDepth not set");
-            require(address(_input.vmAddress) != address(0), "DeployDisputeGame: vmAddress not set");
-        }
     }
 
     function assertValidOutput(Input memory _input, Output memory _output) internal view {
@@ -148,12 +127,9 @@ contract DeployDisputeGame is Script {
 
         DeployUtils.assertValidContractAddress(address(game));
 
-        // Stub has no constructor params to validate.
-        if (!LibString.eq(_input.gameKind, "PermissionedDisputeGameStub")) {
-            require(game.maxGameDepth() == _input.maxGameDepth, "DG-20");
-            require(game.splitDepth() == _input.splitDepth, "DG-30");
-            require(game.clockExtension().raw() == uint64(_input.clockExtension), "DG-40");
-            require(game.maxClockDuration().raw() == uint64(_input.maxClockDuration), "DG-50");
-        }
+        require(game.maxGameDepth() == _input.maxGameDepth, "DG-20");
+        require(game.splitDepth() == _input.splitDepth, "DG-30");
+        require(game.clockExtension().raw() == uint64(_input.clockExtension), "DG-40");
+        require(game.maxClockDuration().raw() == uint64(_input.maxClockDuration), "DG-50");
     }
 }

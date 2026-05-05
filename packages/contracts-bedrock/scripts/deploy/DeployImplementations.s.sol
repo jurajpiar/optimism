@@ -69,8 +69,6 @@ contract DeployImplementations is Script {
         IProxyAdmin superchainProxyAdmin;
         address l1ProxyAdminOwner;
         address challenger;
-        // RSK compatibility flag - skip large contracts that exceed block gas limit
-        bool skipFaultProofs;
     }
 
     struct Output {
@@ -129,21 +127,15 @@ contract DeployImplementations is Script {
         deployL1StandardBridgeImpl(output_);
         deployOptimismMintableERC20FactoryImpl(output_);
         deployOptimismPortalImpl(_input, output_);
-        // Skip OptimismPortalInterop if skipFaultProofs is enabled (RSK compatibility)
-        if (!_input.skipFaultProofs) {
-            deployOptimismPortalInteropImpl(_input, output_);
-        }
+        deployOptimismPortalInteropImpl(_input, output_);
         deployETHLockboxImpl(output_);
         deployDelayedWETHImpl(_input, output_);
         deployPreimageOracleSingleton(_input, output_);
         deployMipsSingleton(_input, output_);
         deployDisputeGameFactoryImpl(output_);
         deployAnchorStateRegistryImpl(_input, output_);
-        // Skip FaultDisputeGame and PermissionedDisputeGame if skipFaultProofs is enabled (RSK compatibility)
-        if (!_input.skipFaultProofs) {
-            deployFaultDisputeGameImpl(_input, output_);
-            deployPermissionedDisputeGameImpl(_input, output_);
-        }
+        deployFaultDisputeGameImpl(_input, output_);
+        deployPermissionedDisputeGameImpl(_input, output_);
         if (DevFeatures.isDevFeatureEnabled(_input.devFeatureBitmap, DevFeatures.OPTIMISM_PORTAL_INTEROP)) {
             deploySuperFaultDisputeGameImpl(_input, output_);
             deploySuperPermissionedDisputeGameImpl(_input, output_);
@@ -201,12 +193,7 @@ contract DeployImplementations is Script {
         deployOPCMDeployer(_input, _output);
         deployOPCMUpgrader(_output);
         deployOPCMInteropMigrator(_output);
-        // Deploy stub validator if skipFaultProofs is enabled (RSK compatibility - full contract too large)
-        if (_input.skipFaultProofs) {
-            deployOPCMStandardValidatorStub(_input, _output, implementations);
-        } else {
-            deployOPCMStandardValidator(_input, _output, implementations);
-        }
+        deployOPCMStandardValidator(_input, _output, implementations);
 
         // Semgrep rule will fail because the arguments are encoded inside of a separate function.
         opcm_ = IOPContractsManager(
@@ -274,12 +261,7 @@ contract DeployImplementations is Script {
 
         // Deploy OPCM V2 components
         deployOPCMContainer(_input, _output, blueprints, implementations);
-        // Deploy stub validator if skipFaultProofs is enabled (RSK compatibility - full contract too large)
-        if (_input.skipFaultProofs) {
-            deployOPCMStandardValidatorStubV2(_input, _output, implementations);
-        } else {
-            deployOPCMStandardValidatorV2(_input, _output, implementations);
-        }
+        deployOPCMStandardValidatorV2(_input, _output, implementations);
         deployOPCMUtils(_output);
         deployOPCMMigrator(_output);
         opcmV2_ = deployOPCMV2(_output);
@@ -826,54 +808,6 @@ contract DeployImplementations is Script {
         _output.opcmStandardValidator = impl;
     }
 
-    /// @notice Deploys a minimal stub validator for RSK compatibility when skipFaultProofs is enabled.
-    ///         The full OPCMStandardValidator contract exceeds RSK's 6.8M block gas limit.
-    function deployOPCMStandardValidatorStub(
-        Input memory _input,
-        Output memory _output,
-        IOPContractsManager.Implementations memory _implementations
-    )
-        private
-    {
-        IOPContractsManagerStandardValidator.Implementations memory opcmImplementations;
-        opcmImplementations.l1ERC721BridgeImpl = _implementations.l1ERC721BridgeImpl;
-        opcmImplementations.optimismPortalImpl = _implementations.optimismPortalImpl;
-        opcmImplementations.optimismPortalInteropImpl = _implementations.optimismPortalInteropImpl;
-        opcmImplementations.ethLockboxImpl = _implementations.ethLockboxImpl;
-        opcmImplementations.systemConfigImpl = _implementations.systemConfigImpl;
-        opcmImplementations.optimismMintableERC20FactoryImpl = _implementations.optimismMintableERC20FactoryImpl;
-        opcmImplementations.l1CrossDomainMessengerImpl = _implementations.l1CrossDomainMessengerImpl;
-        opcmImplementations.l1StandardBridgeImpl = _implementations.l1StandardBridgeImpl;
-        opcmImplementations.disputeGameFactoryImpl = _implementations.disputeGameFactoryImpl;
-        opcmImplementations.anchorStateRegistryImpl = _implementations.anchorStateRegistryImpl;
-        opcmImplementations.delayedWETHImpl = _implementations.delayedWETHImpl;
-        opcmImplementations.mipsImpl = _implementations.mipsImpl;
-        opcmImplementations.faultDisputeGameImpl = _implementations.faultDisputeGameImpl;
-        opcmImplementations.permissionedDisputeGameImpl = _implementations.permissionedDisputeGameImpl;
-
-        IOPContractsManagerStandardValidator impl = IOPContractsManagerStandardValidator(
-            DeployUtils.createDeterministic({
-                _name: "OPCMStandardValidatorStub.sol:OPCMStandardValidatorStub",
-                _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(
-                        IOPContractsManagerStandardValidator.__constructor__,
-                        (
-                            opcmImplementations,
-                            _input.superchainConfigProxy,
-                            _input.l1ProxyAdminOwner,
-                            _input.challenger,
-                            _input.withdrawalDelaySeconds,
-                            _input.devFeatureBitmap
-                        )
-                    )
-                ),
-                _salt: _salt
-            })
-        );
-        vm.label(address(impl), "OPContractsManagerStandardValidatorStubImpl");
-        _output.opcmStandardValidator = impl;
-    }
-
     function deployOPCMUtils(Output memory _output) private {
         IOPContractsManagerUtils impl = IOPContractsManagerUtils(
             DeployUtils.createDeterministic({
@@ -945,54 +879,6 @@ contract DeployImplementations is Script {
             })
         );
         vm.label(address(impl), "OPContractsManagerStandardValidatorImpl");
-        _output.opcmStandardValidator = impl;
-    }
-
-    /// @notice Deploys a minimal stub validator for RSK compatibility when skipFaultProofs is enabled (V2 path).
-    ///         The full OPCMStandardValidator contract exceeds RSK's 6.8M block gas limit.
-    function deployOPCMStandardValidatorStubV2(
-        Input memory _input,
-        Output memory _output,
-        IOPContractsManagerContainer.Implementations memory _implementations
-    )
-        private
-    {
-        IOPContractsManagerStandardValidator.Implementations memory opcmImplementations;
-        opcmImplementations.l1ERC721BridgeImpl = _implementations.l1ERC721BridgeImpl;
-        opcmImplementations.optimismPortalImpl = _implementations.optimismPortalImpl;
-        opcmImplementations.optimismPortalInteropImpl = _implementations.optimismPortalInteropImpl;
-        opcmImplementations.ethLockboxImpl = _implementations.ethLockboxImpl;
-        opcmImplementations.systemConfigImpl = _implementations.systemConfigImpl;
-        opcmImplementations.optimismMintableERC20FactoryImpl = _implementations.optimismMintableERC20FactoryImpl;
-        opcmImplementations.l1CrossDomainMessengerImpl = _implementations.l1CrossDomainMessengerImpl;
-        opcmImplementations.l1StandardBridgeImpl = _implementations.l1StandardBridgeImpl;
-        opcmImplementations.disputeGameFactoryImpl = _implementations.disputeGameFactoryImpl;
-        opcmImplementations.anchorStateRegistryImpl = _implementations.anchorStateRegistryImpl;
-        opcmImplementations.delayedWETHImpl = _implementations.delayedWETHImpl;
-        opcmImplementations.mipsImpl = _implementations.mipsImpl;
-        opcmImplementations.faultDisputeGameImpl = _implementations.faultDisputeGameImpl;
-        opcmImplementations.permissionedDisputeGameImpl = _implementations.permissionedDisputeGameImpl;
-
-        IOPContractsManagerStandardValidator impl = IOPContractsManagerStandardValidator(
-            DeployUtils.createDeterministic({
-                _name: "OPCMStandardValidatorStub.sol:OPCMStandardValidatorStub",
-                _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(
-                        IOPContractsManagerStandardValidator.__constructor__,
-                        (
-                            opcmImplementations,
-                            _input.superchainConfigProxy,
-                            _input.l1ProxyAdminOwner,
-                            _input.challenger,
-                            _input.withdrawalDelaySeconds,
-                            _input.devFeatureBitmap
-                        )
-                    )
-                ),
-                _salt: _salt
-            })
-        );
-        vm.label(address(impl), "OPContractsManagerStandardValidatorStubImpl");
         _output.opcmStandardValidator = impl;
     }
 
@@ -1092,34 +978,18 @@ contract DeployImplementations is Script {
             address(_output.protocolVersionsImpl)
         );
 
-        // Build addrs2 conditionally based on skipFaultProofs flag
-        address[] memory addrs2;
-        if (_input.skipFaultProofs) {
-            // When skipFaultProofs is enabled, don't require fault proof contracts
-            addrs2 = Solarray.addresses(
-                address(_output.systemConfigImpl),
-                address(_output.l1CrossDomainMessengerImpl),
-                address(_output.l1ERC721BridgeImpl),
-                address(_output.l1StandardBridgeImpl),
-                address(_output.optimismMintableERC20FactoryImpl),
-                address(_output.disputeGameFactoryImpl),
-                address(_output.anchorStateRegistryImpl),
-                address(_output.ethLockboxImpl)
-            );
-        } else {
-            addrs2 = Solarray.addresses(
-                address(_output.systemConfigImpl),
-                address(_output.l1CrossDomainMessengerImpl),
-                address(_output.l1ERC721BridgeImpl),
-                address(_output.l1StandardBridgeImpl),
-                address(_output.optimismMintableERC20FactoryImpl),
-                address(_output.disputeGameFactoryImpl),
-                address(_output.anchorStateRegistryImpl),
-                address(_output.ethLockboxImpl),
-                address(_output.faultDisputeGameImpl),
-                address(_output.permissionedDisputeGameImpl)
-            );
-        }
+        address[] memory addrs2 = Solarray.addresses(
+            address(_output.systemConfigImpl),
+            address(_output.l1CrossDomainMessengerImpl),
+            address(_output.l1ERC721BridgeImpl),
+            address(_output.l1StandardBridgeImpl),
+            address(_output.optimismMintableERC20FactoryImpl),
+            address(_output.disputeGameFactoryImpl),
+            address(_output.anchorStateRegistryImpl),
+            address(_output.ethLockboxImpl),
+            address(_output.faultDisputeGameImpl),
+            address(_output.permissionedDisputeGameImpl)
+        );
 
         if (DevFeatures.isDevFeatureEnabled(_input.devFeatureBitmap, DevFeatures.OPTIMISM_PORTAL_INTEROP)) {
             address[] memory superGameAddrs = Solarray.addresses(

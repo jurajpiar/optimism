@@ -295,8 +295,7 @@ contract Deploy is Deployer {
                 superchainConfigProxy: superchainConfigProxy,
                 superchainProxyAdmin: superchainProxyAdmin,
                 l1ProxyAdminOwner: superchainProxyAdmin.owner(),
-                challenger: cfg.l2OutputOracleChallenger(),
-                skipFaultProofs: false
+                challenger: cfg.l2OutputOracleChallenger()
             })
         );
 
