@@ -2,12 +2,19 @@
 
 This guide walks through deploying the OP Stack L1 contracts to a Rootstock
 (RSK) L1 using **only `forge` and `cast`**, from inside the `optimism` fork.
-No external Go tooling, no `op-deployer`, no parent rollup repository.
+No external Go tooling, no upstream `op-deployer`, no parent rollup repository.
 
-If you already have access to the parent rollup repo's `cmd/deploy-rollup`
-Go binary, prefer that — it automates everything in this guide and produces
-`genesis.json` / `rollup.json` runtime configs in one shot. This document is
-for operators working from the contracts repository alone.
+If you'd rather have one binary do everything end-to-end (including the
+runtime `genesis.json` / `rollup.json` files this Forge-only path can't
+produce), use the RSK orchestrator that ships in this fork:
+
+```bash
+go install github.com/ethereum-optimism/optimism/rsk/op-deployer/cmd/deploy-rollup@latest
+```
+
+See `rsk/op-deployer/README.md` for usage. The Forge-only steps below are
+retained for operators who prefer not to install Go tooling, or who want
+full per-transaction visibility (debugging, audit, manual gas tuning).
 
 ---
 
@@ -463,19 +470,16 @@ repository's `cmd/deploy-rollup` Go tool builds this file for you;
 without it you'll have to hand-author one from upstream's documented
 schema.
 
-If you have the parent rollup repo, the simplest path post-step-4 is:
+The simplest path post-step-4 is the bundled RSK orchestrator:
 
 ```bash
-# from the parent rollup repo
-./bin/deploy-rollup --workdir <your-workdir> \
-  --resume \
-  --start-from generate-genesis  # skips already-done deploy steps
+go install github.com/ethereum-optimism/optimism/rsk/op-deployer/cmd/deploy-rollup@latest
+deploy-rollup --workdir <your-workdir> --resume --start-from generate-genesis
 ```
 
 The state files (`deployment_state.json`, `state.json`) it writes can
 be reconstructed from the broadcast JSONs you have, so even a partial
-deploy done by hand can hand off to the Go tool for the runtime-config
-generation.
+hand-deploy can hand off to the Go tool for runtime-config generation.
 
 ---
 
@@ -533,6 +537,6 @@ See "CREATE2 factory" above for the regtest one-shot.
 - `PLAN.md` — design rationale, gas budget per stage, EIP-170 splits.
 - `contracts/RSKOPCMSplitter.sol` — the on-chain splitter implementation.
 - `script/RSKDeployOPChain.s.sol` — the Forge driver for `runSplit`.
-- Parent rollup repository (if you have access): `cmd/deploy-rollup`
-  automates everything in this guide and produces `genesis.json` /
-  `rollup.json` / a smoke-test-ready workdir in one invocation.
+- `../../rsk/op-deployer/` — the bundled Go orchestrator that automates every
+  step in this guide, plus runtime-config generation (`genesis.json`,
+  `rollup.json`).
