@@ -53,7 +53,6 @@ require (
 	github.com/prometheus/client_model v0.6.2
 	github.com/protolambda/ctxlock v0.1.0
 	github.com/schollz/progressbar/v3 v3.18.0
-	github.com/smishraIOV/gorsk v0.1.0-rc.0
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v2 v2.27.6
 	go.etcd.io/bbolt v1.3.5
@@ -278,7 +277,7 @@ require (
 	lukechampine.com/blake3 v1.3.0 // indirect
 )
 
-replace github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101702.2-rc.2
+// replace github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101702.2-rc.2
 
 // replace github.com/ethereum/go-ethereum => ../op-geth
 // replace github.com/smishraIOV/gorsk => ../gorsk
