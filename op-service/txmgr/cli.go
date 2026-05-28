@@ -184,11 +184,6 @@ func CLIFlagsWithDefaultsAndBTO(envPrefix string, defaults DefaultFlagValues) []
 			EnvVars: prefixEnvVars("TXMGR_BLOB_TIP_CAP_RANGE"),
 			Value:   defaults.BlobTipCapRange,
 		},
-		&cli.BoolFlag{
-			Name:    UseLegacyTxFlagName,
-			Usage:   "Force legacy (type 0) transactions instead of EIP-1559 (type 2). Required for L1 chains that don't support EIP-1559.",
-			EnvVars: prefixEnvVars("TXMGR_USE_LEGACY_TX"),
-		},
 	)
 }
 
@@ -316,6 +311,11 @@ func CLIFlagsWithDefaults(envPrefix string, defaults DefaultFlagValues) []cli.Fl
 			Usage:   "Enables cell proofs in blob transactions for Fusaka (EIP-7742) compatibility from the provided unix timestamp. Should be set to the L1 Fusaka time. May be left blank for Ethereum Mainnet, Sepolia, Holesky, or Hoodi L1s.",
 			EnvVars: prefixEnvVars("TXMGR_CELL_PROOF_TIME"),
 			Value:   defaults.CellProofTime,
+		},
+		&cli.BoolFlag{
+			Name:    UseLegacyTxFlagName,
+			Usage:   "Force legacy (type 0) transactions instead of EIP-1559 (type 2). Required for L1 chains that don't support EIP-1559.",
+			EnvVars: prefixEnvVars("TXMGR_USE_LEGACY_TX"),
 		},
 	}, opsigner.CLIFlags(envPrefix, "")...)
 }

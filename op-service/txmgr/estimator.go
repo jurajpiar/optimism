@@ -2,6 +2,7 @@ package txmgr
 
 import (
 	"context"
+	"errors"
 	"math/big"
 )
 
@@ -48,5 +49,5 @@ func DefaultGasPriceEstimatorFn(ctx context.Context, backend ETHBackend) (*big.I
 	if tipErr != nil {
 		return nil, nil, nil, tipErr
 	}
-	return nil, nil, nil, err
+	return nil, nil, nil, errors.New("cannot estimate gas: neither EIP-1559 baseFee nor eth_gasPrice available")
 }
